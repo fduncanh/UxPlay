@@ -35,8 +35,9 @@ downloaded source code, then do
 6. cmake ..      (or "cmake -DZOOMFIX=ON .." to get a screen-sharing fix to
 make the mirror display window visible to screen-sharing applications such as
 Zoom, see below).
-7. make
-8. sudo make install
+7. cd ..
+8. make
+9. sudo make install
 
 Run uxplay in a terminal window.
 
