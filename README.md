@@ -69,7 +69,7 @@ Make sure that cmake>=3.4.1 and pkg-config are also installed: "sudo apt-get ins
 In a terminal window, change directories to the source directory of the
 downloaded source code ("UxPlay-master" for zipfile downloads, "UxPlay" for "git clone" downloads), then do
 
-1. `sudo apt-get install libssl-dev libplist-dev libavahi-compat-libdnssd-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-libav gstreamer1.0-plugins-bad` 
+1. `sudo apt-get install libssl-dev libplist-dev libavahi-compat-libdnssd-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-libav gstreamer1.0-plugins-bad libavahi-compat-libdnssd-dev`
 2. `sudo apt-get install gstreamer1.0-vaapi` (For Intel graphics, but not nVidia graphics)
 3. `sudo apt-get install libx11-dev`  (for the "ZOOMFIX" X11_display name fix for screen-sharing with e.g.,  ZOOM)
 4. `cmake .` (or "`cmake -DZOOMFIX=ON .`" to get a screen-sharing fix to

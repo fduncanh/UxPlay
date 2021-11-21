@@ -19,6 +19,15 @@ if( UNIX AND NOT APPLE )
  add_definitions( -DSUPPRESS_AVAHI_COMPAT_WARNING )
 endif()
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(DNSSD REQUIRED avahi-compat-libdns_sd)
+pkg_check_modules(PLIST REQUIRED libplist-2.0)
+if(NOT PLIST_FOUND)
+  pkg_check_modules(PLIST REQUIRED libplist)
+endif()
+
+link_directories(${PLIST_LIBRARY_DIRS})
+
 add_subdirectory( lib/llhttp )
 add_subdirectory( lib/playfair )
 add_subdirectory( lib )
@@ -40,14 +49,10 @@ else()
                   )
 endif()
 
-if (BSD )
-  target_link_directories( uxplay PUBLIC /usr/local/lib )
-  target_link_libraries( uxplay ${PLIST_LIBRARIES})
-endif() 
-
 target_link_libraries( uxplay
                    renderers
                    airplay
+                   ${PLIST_LIBRARIES}
 		   )
 
 install( TARGETS  uxplay RUNTIME DESTINATION bin )
