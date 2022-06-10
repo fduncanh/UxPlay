@@ -476,7 +476,7 @@ raop_rtp_thread_udp(void *arg)
 
             memcpy(&raop_rtp->control_saddr, &saddr, saddrlen);
             raop_rtp->control_saddr_len = saddrlen;
-            int type_c = packet[1] & ~0x80;
+            int type_c = packetlen > 1 ? packet[1] & ~0x80 : -1;
             logger_log(raop_rtp->logger, LOGGER_DEBUG, "\nraop_rtp type_c 0x%02x, packetlen = %d", type_c, packetlen);
             if (type_c == 0x56) {
                 /* Handle resent data packet */
@@ -484,7 +484,9 @@ raop_rtp_thread_udp(void *arg)
                 uint32_t rtp_timestamp = byteutils_get_int_be(packet + offset, 4);
                 logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp audio resent: rtp=%u", rtp_timestamp);
                 int result = raop_buffer_enqueue(raop_rtp->buffer, packet + offset, packetlen - offset, rtp_timestamp, 1);
-                assert(result >= 0);
+                if (result < 0) {
+                    logger_log(raop_rtp->logger, LOGGER_INFO, "raop_rtp dropping resend of packetlen = %d", packetlen);
+                }
             } else if (type_c == 0x54 && packetlen >= 20) {
                 /* packet[0] = 0x90 (first sync ?) or 0x80 (subsequent ones)      *
                  * packet[1:3] = 0xd4,  0xd4 && ~0x80 = type 54                   *
