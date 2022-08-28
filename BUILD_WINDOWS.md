@@ -21,8 +21,6 @@ pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-libplist 
 ```
 #### Build and install kdewin:
 ```
-echo 'export PATH="/mingw64/bin/:$PATH"' >> ~/.bashrc
-
 export PATH="/mingw64/bin/:$PATH"
 git clone https://github.com/KDE/kdewin.git --depth=1
 cd kdewin; mkdir build; cd build
@@ -30,7 +28,10 @@ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/ -DBUILD_QT_LIB
 ninja
 ninja install
 ```
-
+Add permanently mingw64 in MSYS2 PATH:
+```
+echo 'export PATH="/mingw64/bin/:$PATH"' >> ~/.bashrc
+```
 
 Now you can add **MinGW-w64** compiler installed from MSYS2 to your IDE. Compiler with all required dependencies located in msys64 directory, by default this path `C:/msys64/mingw64`. Also you can build UxPlay using MSYS2 environment.
 
