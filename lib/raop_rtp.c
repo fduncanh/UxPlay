@@ -521,7 +521,7 @@ raop_rtp_thread_udp(void *arg)
                     uint32_t timestamp = byteutils_get_int_be(resent_packet, 4);
                     uint64_t rtp_time = rtp64_time(raop_rtp, &timestamp);
                     logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp resent audio packet: seqnum=%u", seqnum);
-		            int enqueue_ret = raop_buffer_enqueue(raop_rtp->buffer, resent_packet, resent_packetlen, rtp_time, 1);
+                    int enqueue_ret = raop_buffer_enqueue(raop_rtp->buffer, resent_packet, resent_packetlen, rtp_time, 1);
                     assert(enqueue_ret >= 0);
                 } else {
                     /* type_c = 0x56 packets  with length 8 have been reported */
@@ -662,7 +662,7 @@ raop_rtp_thread_udp(void *arg)
                     seqnum2 = seqnum1;
                     seqnum1 = seqnum;
                 }
-		        int enqueue_ret = raop_buffer_enqueue(raop_rtp->buffer, packet, packetlen, rtp_time, 1);
+                int enqueue_ret = raop_buffer_enqueue(raop_rtp->buffer, packet, packetlen, rtp_time, 1);
                 assert(enqueue_ret >= 0);
                 // Render continuous buffer entries
                 void *payload = NULL;
