@@ -658,7 +658,7 @@ raop_rtp_thread_udp(void *arg)
                         raop_rtp->rtp_sync_offset = initial_offset + (int64_t) (sync_adjustment / rtp_count);
                         //logger_log(raop_rtp->logger, LOGGER_DEBUG, "initial estimate of rtp_sync_offset %d secnum = %u:  %8.6f",
                         //           rtp_count, seqnum,  ((double) raop_rtp->rtp_sync_offset) / SEC);
-		            }
+                    }
                     seqnum2 = seqnum1;
                     seqnum1 = seqnum;
                 }
