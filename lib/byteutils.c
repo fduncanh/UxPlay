@@ -20,10 +20,20 @@
 #ifdef SYS_ENDIAN_H
 #include <sys/endian.h>
 #else
+
+#ifndef __MINGW64__
 #include <endian.h>
 #endif
+
+#endif
+
 #define htonll(x) htobe64(x)
 #define ntohll(x) be64toh(x)
+
+#ifdef __MINGW64__
+#define be64toh(x) ((1==ntohl(1)) ? (x) : (((uint64_t)ntohl((x) & 0xFFFFFFFFUL)) << 32) | ntohl((uint32_t)((x) >> 32)))
+#endif
+
 #endif
 
 // The functions in this file assume a little endian cpu architecture!

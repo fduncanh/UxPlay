@@ -26,10 +26,19 @@ add_subdirectory( lib/playfair )
 add_subdirectory( lib )
 add_subdirectory( renderers )
 
+if( MINGW )
+    find_package( PkgConfig REQUIRED )
+    pkg_check_modules( KDEWIN REQUIRED kdewin>=0.6.3 )
+    include_directories( ${KDEWIN_INCLUDE_DIRS} )
+    find_library( LIBKDEWIN ${KDEWIN_LIBRARIES} PATH ${KDEWIN_LIBDIR} )
+    set( OS_DEPENDENT_LIBRARIES ${LIBKDEWIN} )
+endif()
+
 add_executable( uxplay uxplay.cpp )
 target_link_libraries( uxplay
                    renderers
                    airplay
+                   ${OS_DEPENDENT_LIBRARIES}
 		   )
 
 install( TARGETS  uxplay RUNTIME DESTINATION bin )

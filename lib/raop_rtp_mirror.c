@@ -32,6 +32,15 @@
 #include "utils.h"
 #include "plist/plist.h"
 
+#ifdef __MINGW64__
+#include "ws2ipdef.h"
+
+#define TCP_KEEPIDLE SO_KEEPALIVE
+#define TCP_KEEPINTVL SO_KEEPALIVE
+#define TCP_KEEPCNT SO_KEEPALIVE
+
+#endif
+
 #define SEC 1000000
 /* for MacOS, where SOL_TCP and TCP_KEEPIDLE are not defined */
 #if !defined(SOL_TCP) && defined(IPPROTO_TCP)

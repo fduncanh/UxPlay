@@ -28,6 +28,10 @@
 #include "byteutils.h"
 #include "utils.h"
 
+#ifdef __MINGW64__
+#include <sys/time.h>
+#endif
+
 #define RAOP_NTP_DATA_COUNT   8
 #define RAOP_NTP_PHI_PPM   15ull                   // PPM
 #define RAOP_NTP_R_RHO   ((1ull    << 32) / 1000u) // packet precision
@@ -227,8 +231,13 @@ raop_ntp_init_socket(raop_ntp_t *raop_ntp, int use_ipv6)
 static void
 raop_ntp_flush_socket(int fd)
 {
+#ifdef __MINGW64__
+    u_long bytes_available = 0;
+    while (ioctlsocket(fd, FIONREAD, &bytes_available) == 0 && bytes_available > 0)
+#else
     int bytes_available = 0;
     while (ioctl(fd, FIONREAD, &bytes_available) == 0 && bytes_available > 0)
+#endif
     {
         // We are guaranteed that we won't block, because bytes are available.
         // Read 1 byte. Extra bytes in the datagram will be discarded.
