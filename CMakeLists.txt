@@ -30,7 +30,6 @@ add_executable( uxplay uxplay.cpp )
 target_link_libraries( uxplay
                    renderers
                    airplay
-                   ${OS_DEPENDENT_LIBRARIES}
 		   )
 
 install( TARGETS  uxplay RUNTIME DESTINATION bin )
