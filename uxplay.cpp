@@ -24,16 +24,18 @@
 #include <string>
 #include <vector>
 #include <fstream>
-#include <sys/utsname.h>
+
 #ifdef __MINGW64__
 #include <glib.h>
 #include <unordered_map>
+#include <windows.h>
 #else
 #include <glib-unix.h>
-#endif
-
+#include <sys/utsname.h>
 #include <sys/socket.h>
 #include <ifaddrs.h>
+#endif
+
 #ifdef __linux__
 #include <netpacket/packet.h>
 #else
@@ -516,6 +518,16 @@ static bool get_videorotate (const char *str, videoflip_t *videoflip) {
 }
 
 static void append_hostname(std::string &server_name) {
+#ifdef __MINGW64__
+    char buffer[256] = "";
+    unsigned long size = sizeof(buffer);
+    if (GetComputerNameA(buffer, &size)) {
+      std::string name = server_name;
+      name.append("@");
+      name.append(buffer);
+      server_name = name;
+    }
+#else
     struct utsname buf;
     if (!uname(&buf)) {
       std::string name = server_name;
@@ -523,6 +535,7 @@ static void append_hostname(std::string &server_name) {
       name.append(buf.nodename);
       server_name = name;
     }
+#endif
 }
 
 void parse_arguments (int argc, char *argv[]) {    

@@ -61,11 +61,6 @@ else()
           llhttp )
 endif()
 
-if( MINGW )
-  pkg_check_modules( KDEWIN REQUIRED kdewin>=0.6.3 )
-  target_include_directories( airplay PRIVATE ${KDEWIN_INCLUDE_DIRS} )
-endif()
-
 # libplist
 if( (UNIX OR MINGW) AND NOT APPLE )
   pkg_search_module(PLIST libplist>=2.0)

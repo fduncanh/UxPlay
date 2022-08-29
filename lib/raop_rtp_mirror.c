@@ -20,7 +20,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
+
+#ifndef __MINGW64__
 #include <netinet/tcp.h>
+#endif
 
 #include "raop.h"
 #include "netutils.h"

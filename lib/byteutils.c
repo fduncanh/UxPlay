@@ -13,7 +13,13 @@
  */
 
 #include <time.h>
+
+#ifdef __MINGW64__
+#include <winsock2.h>
+#else
 #include <netinet/in.h>
+#endif
+
 #include "byteutils.h"
 
 #ifndef htonll

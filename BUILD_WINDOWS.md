@@ -19,15 +19,7 @@ pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-libplist 
     mingw-w64-x86_64-gst-plugins-ugly \
     git
 ```
-#### Build and install kdewin:
-```
-export PATH="/mingw64/bin/:$PATH"
-git clone https://github.com/KDE/kdewin.git --depth=1
-cd kdewin; mkdir build; cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/mingw64/ -DBUILD_QT_LIB=OFF -DBUILD_BASE_LIB_WITH_QT=OFF -DSTATIC_LIBRARY=ON ..
-ninja
-ninja install
-```
+
 Add permanently mingw64 in MSYS2 PATH:
 ```
 echo 'export PATH="/mingw64/bin/:$PATH"' >> ~/.bashrc
