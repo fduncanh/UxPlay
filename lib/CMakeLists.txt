@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.4.1)
 include_directories( playfair llhttp )
 
 # Common Linux cflags
-if ( UNIX AND NOT APPLE )
+if ( (UNIX OR MINGW) AND NOT APPLE )
   set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSTANDALONE -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DTARGET_POSIX -D_LINUX -fPIC -DPIC -D_REENTRANT -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -U_FORTIFY_SOURCE -Wall -g" )
 endif()
 
@@ -47,7 +47,13 @@ if ( APPLE )
                          pthread
                          playfair
                          llhttp )
-else()
+elseif( MINGW )
+  target_link_libraries( airplay PUBLIC
+                         pthread
+                         playfair
+                         llhttp
+                         wsock32
+                         ws2_32 )
   target_link_libraries( airplay PUBLIC 
                          pthread
                          playfair
@@ -55,7 +61,7 @@ else()
 endif()
 
 # libplist
-if( UNIX AND NOT APPLE )
+if( (UNIX OR MINGW) AND NOT APPLE )
   pkg_search_module(PLIST libplist>=2.0)
   if(NOT PLIST_FOUND)
     pkg_search_module(PLIST REQUIRED libplist-2.0)
@@ -72,7 +78,7 @@ endif()
 target_include_directories( airplay PRIVATE ${PLIST_INCLUDE_DIRS} )
 
 #libcrypto
-if( UNIX AND NOT APPLE )
+if( (UNIX OR MINGW) AND NOT APPLE )
   find_package(OpenSSL 1.1.1 REQUIRED)
   target_compile_definitions( airplay PUBLIC OPENSSL_API_COMPAT=0x10101000L )
   target_link_libraries( airplay PUBLIC OpenSSL::Crypto )
@@ -94,18 +100,23 @@ elseif( APPLE )
   target_include_directories( airplay PRIVATE ${OPENSSL_INCLUDE_DIRS} )
 endif()
 
-#dns_sd 
-if ( UNIX AND NOT APPLE )
+#dns_sd
+if ( (UNIX OR MINGW) AND NOT APPLE )
   pkg_search_module(AVAHI_DNSSD avahi-compat-libdns_sd)
   if (AVAHI_DNSSD_FOUND)
     target_include_directories( airplay PRIVATE ${AVAHI_DNSSD_INCLUDE_DIRS} )
     find_library( DNSSD ${AVAHI_DNSSD_LIBRARIES} PATH ${AVAHI_DNSSD_LIBDIR})
   else()  # UxPlay can also build if mDNSResponder or another implementation of dns_sd is present instead of Avahi
-    find_library( DNSSD dns_sd )
-    if( NOT DNSSD )
-      message( FATAL_ERROR "libdns_sd missing; can be provided by avahi_compat-libdns_sd or mDNSResponder." )
+    if ( MINGW )
+      set(DNSSD "$ENV{BONJOUR_SDK_HOME}/Lib/x64/dnssd.lib")
+      set(DNSSD_INCLUDE_DIR "$ENV{BONJOUR_SDK_HOME}/Include")
     else()
-      message( STATUS "dns_sd:  found" ${DNSSD} )
+      find_library( DNSSD dns_sd )
+      if( NOT DNSSD )
+        message( FATAL_ERROR "libdns_sd missing; can be provided by avahi_compat-libdns_sd or mDNSResponder." )
+      else()
+        message( STATUS "dns_sd:  found" ${DNSSD} )
+      endif()
     endif()
     find_path(DNSSD_INCLUDE_DIR dns_sd.h HINTS ${CMAKE_INSTALL_INCLUDEDIR} )
     if ( NOT DNSSD_INCLUDE_DIR )
