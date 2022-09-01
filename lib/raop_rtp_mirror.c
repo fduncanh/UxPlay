@@ -39,8 +39,8 @@
 #ifdef _WIN32
 #define CAST (char *)
 #define TCP_KEEPIDLE SO_KEEPALIVE
-#define TCP_KEEPINTVL SO_KEEPALIVE
-#define TCP_KEEPCNT SO_KEEPALIVE
+#define TCP_KEEPINTVL 17
+#define TCP_KEEPCNT 16
 #else
 #define CAST
 #endif
