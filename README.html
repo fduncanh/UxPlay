@@ -458,10 +458,6 @@ landscape mode as the device is rotated).</p>
 id="building-uxplay-on-windows-tested-on-windows-10-64bit-using-msys2-and-mingw-64-compiler">Building
 UxPlay on Windows (tested on Windows 10 64bit, using MSYS2 and MinGW-64
 compiler)</h2>
-<p>Limitations: “<code>sudo make install</code>” does not work (due to
-lack of “sudo” equivalent on this platform); GStreamer sound was so far
-only confirmed to work with the DirectSound audiosink option
-“<code>-as directsoundsink</code>”.</p>
 <ol type="1">
 <li><p>Download and install <strong>Bonjour SDK for Windows
 v3.0</strong> from the official Apple site <a
@@ -485,7 +481,7 @@ run</p>
 <p><code>pacman -S mingw-w64-x86_64-cmake</code></p>
 <p><code>pacman -S mingw-w64-x86_64-gcc</code></p>
 <p><code>echo 'export PATH="/mingw64/bin/:$PATH"' &gt;&gt; ~/.bashrc</code></p>
-<p>Now close the MSYS2 terminal widow, and reopen a new one from the
+<p>Now close the MSYS2 terminal window, and reopen a new one from the
 Start menu, to use the new PATH.</p></li>
 <li><p>Download latest UxPlay from github <strong>(to use
 <code>git</code>, install it with <code>pacman -S git</code>, then
@@ -493,32 +489,32 @@ Start menu, to use the new PATH.</p></li>
 install UxPlay dependencies:</p>
 <p><code>pacman -S mingw-w64-x86_64-libplist mingw-w64-x86_64-openssl</code></p>
 <p><code>pacman -S mingw-w64-x86_64-gstreamer  mingw-w64-x86_64-gst-plugins-base</code></p>
-<p>It should also be possible to install gstreamer for Windows from the
-<a href="https://gstreamer.freedesktop.org/download/">offical GStreamer
-site</a>, especially if you are trying a different Windows build
-system.</p></li>
+<p>Note that libplist will be linked statically to the uxplay
+executable. It should also be possible to install gstreamer for Windows
+from the <a href="https://gstreamer.freedesktop.org/download/">offical
+GStreamer site</a>, especially if you are trying a different Windows
+build system.</p></li>
 <li><p>cd to the UxPlay source directory, then
-“<code>mkdir build</code>” and “<code>cd build</code>”, then</p>
+“<code>mkdir build</code>” and “<code>cd build</code>”, followed by</p>
 <p><code>cmake ..</code></p>
 <p><code>ninja</code></p></li>
 <li><p>Assuming no error in either of these, you will have built the
 uxplay executable <strong>uxplay.exe</strong> in the current (“build”)
-directory. Unfortunately “<code>make install</code>” does not yet work,
-as an equivalent to <code>sudo</code> does not appear to be available.
-You can run <strong>uxplay.exe</strong> from the command line in the
-build directory, or move it it somewhere in your PATH: in the MSYS2
-environment, <code>/usr/local/bin</code> is in the PATH, so install
-using</p>
-<p><code>mkdir /usr/local/bin</code></p>
-<p><code>cp uxplay.exe /usr/local/bin/</code></p>
-<p>This does not install manpages, but you will have access to help with
-“<code>uxplay -h</code>”.</p></li>
+directory. The “sudo make install” and “sudo make uninstall” features
+offered in the other builds are not available on Windows; instead, the
+MSYS2 environment has <code>/usr/local/...</code> available, and you can
+install the uxplay.exe executable in <code>/usr/local/bin</code> (plus
+manpage and documentation in <code>/usr/local/share</code>) with</p>
+<p><code>cmake --install . --prefix /usr/local</code></p>
+<p>To be able to view the manpage, you need to install the manpage
+viewer with “<code>pacman -S man</code>”, then give it the location of
+the uxplay manpage:</p>
+<p><code>echo 'export "MANPATH=$MANPATH:/usr/local/share/man"' &gt;&gt; ~/.bashrc</code></p>
+<p>(followed by “<code>source ~./bashrc</code>”).</p></li>
 </ol>
 <p>To run <strong>uxplay.exe</strong> you need to install gstreamer
-plugins. For sound, the audiosink option
-<code>-as directsoundsink</code> has worked. Install plugins with
-<code>pacman -S mingw-w64-x86_64-gst-&lt;plugin&gt;</code>, where
-<code>&lt;plugin&gt;</code> is</p>
+plugins with <code>pacman -S mingw-w64-x86_64-gst-&lt;plugin&gt;</code>,
+where <code>&lt;plugin&gt;</code> is</p>
 <ol type="1">
 <li><strong>libav</strong></li>
 <li><strong>plugins-good</strong></li>
@@ -527,20 +523,26 @@ plugins. For sound, the audiosink option
 <p>Other possible MSYS2 gstreamer plugin packages you might use are
 listed in <a href="https://packages.msys2.org/package/">MSYS2
 packages</a>.</p>
-<p>You also will need to grant the uxplay executable permission to have
-access through the Windows firewall. You may automatically be offered
-the choice to do this when you first run uxplay, or you may need to do
-it using <strong>Windows Settings-&gt;Update and Security-&gt;Windows
-Security-&gt;Firewall &amp; network protection -&gt; allow an app
-through firewall</strong>. If your virus protection flags uxplay.exe as
-“suspicious” (but without a true malware signature) you may need to give
-it an exception.</p>
-<p>Now test (in a MSYS2 terminal window) with</p>
-<pre><code>uxplay -as directsoundsink</code></pre>
-<p>Unfortunately, so far there is no success in getting UxPlay to
-successfully create a valid GStreamer audio pipeline ending at the
-more-modern <strong>wasapi</strong> Windows audiosink with option
-“<code>-as wasapisink</code>”.</p>
+<p>You also will need to grant permission to the uxplay executable
+uxplay.exe to access data through the Windows firewall. You may
+automatically be offered the choice to do this when you first run
+uxplay, or you may need to do it using <strong>Windows
+Settings-&gt;Update and Security-&gt;Windows Security-&gt;Firewall &amp;
+network protection -&gt; allow an app through firewall</strong>. If your
+virus protection flags uxplay.exe as “suspicious” (but without a true
+malware signature) you may need to give it an exception.</p>
+<p>Now test by running “<code>uxplay</code>” (in a MSYS2 terminal
+window). If you need to specify the audiosink, there are two main
+choices on Windows: the older DirectSound plugin
+“<code>-as directsoundsink</code>”, and the more modern Windows Audio
+Session API (wasapi) plugin “<code>-as wasapisink</code>”, which
+supports options such as</p>
+<pre><code>uxplay -as &#39;wasapisink low_latency=true device=\&quot;&lt;guid&gt;\&quot;&#39; </code></pre>
+<p>where <code>&lt;guid&gt;</code> specifies an available audio device
+by its GUID, which can be found using
+“<code>gst-device-monitor-1.0 Audio</code>”: <code>&lt;guid&gt;</code>
+has a form like
+<code>\{0.0.0.00000000\}.\{98e35b2b-8eba-412e-b840-fd2c2492cf44\}</code>.</p>
 <h1 id="usage">Usage</h1>
 <p>Options:</p>
 <p><strong>-n server_name</strong> (Default: UxPlay);
@@ -639,9 +641,10 @@ for Ubuntu 21.10 for Raspberry Pi 4B).</p>
 <p><strong>-as <em>audiosink</em></strong> chooses the GStreamer
 audiosink, instead of letting autoaudiosink pick it for you. Some
 audiosink choices are: pulsesink, alsasink, pipewiresink, osssink,
-oss4sink, jackaudiosink, a2dpsink, and osxaudiosink (for macOS). Using
-quotes “…” might allow some parameters to be included with the audiosink
-name. (Some choices of audiosink might not work on your system.)</p>
+oss4sink, jackaudiosink, osxaudiosink (for macOS), wasapisink,
+directsoundsink (for Windows). Using quotes “…” might allow some
+parameters to be included with the audiosink name. (Some choices of
+audiosink might not work on your system.)</p>
 <p><strong>-as 0</strong> (or just <strong>-a</strong>) suppresses
 playing of streamed audio, but displays streamed video.</p>
 <p><strong>-ca <em>filename</em></strong> provides a file (where

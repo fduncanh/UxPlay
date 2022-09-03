@@ -411,8 +411,8 @@ static void print_info (char *name) {
     printf("-rpifb    Same as \"-rpi -vs kmssink\" for RPi using framebuffer.\n");
     printf("-rpiwl    Same as \"-rpi -vs waylandsink\" for RPi using Wayland.\n");
     printf("-as ...   Choose the GStreamer audiosink; default \"autoaudiosink\"\n");
-    printf("          choices include: pulsesink,alsasink,pipewiresink,osssink,\n");
-    printf("          oss4sink,jackaudiosink,a2dpsink,osxaudiosink, etc.\n");
+    printf("          some choices:pulsesink,alsasink,pipewiresink,jackaudiosink,\n");
+    printf("          osssink,oss4sink,osxaudiosink,wasapisink,directsoundsink.\n");
     printf("-as 0     (or -a)  Turn audio off, streamed video only\n");
     printf("-ca <fn>  In Airplay Audio (ALAC) mode, write cover-art to file <fn>\n");
     printf("-reset n  Reset after 3n seconds client silence (default %d, 0=never)\n", NTP_TIMEOUT_LIMIT);

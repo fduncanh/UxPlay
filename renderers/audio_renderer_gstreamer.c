@@ -103,6 +103,9 @@ void audio_renderer_init(logger_t *render_logger, const char* audiosink) {
             break;
         }
         g_string_append (launch, "audioconvert ! volume name=volume ! level ! ");
+#ifdef _WIN32
+        g_string_append (launch, "audioresample ! ");    /* wasapisink must resample from 44.1 kHz to 48 kHz */
+#endif
         g_string_append (launch, audiosink);
         g_string_append (launch, " sync=false");
         renderer_type[i]->pipeline  = gst_parse_launch(launch->str, &error);
