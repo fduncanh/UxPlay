@@ -411,8 +411,8 @@ static void print_info (char *name) {
     printf("-rpifb    Same as \"-rpi -vs kmssink\" for RPi using framebuffer.\n");
     printf("-rpiwl    Same as \"-rpi -vs waylandsink\" for RPi using Wayland.\n");
     printf("-as ...   Choose the GStreamer audiosink; default \"autoaudiosink\"\n");
-    printf("          some choices:pulsesink,alsasink,pipewiresink,jackaudiosink,\n");
-    printf("          osssink,oss4sink,osxaudiosink,wasapisink,directsoundsink.\n");
+    printf("          choices include: pulsesink,alsasink,pipewiresink,osssink,\n");
+    printf("          oss4sink,jackaudiosink,a2dpsink,osxaudiosink, etc.\n");
     printf("-as 0     (or -a)  Turn audio off, streamed video only\n");
     printf("-ca <fn>  In Airplay Audio (ALAC) mode, write cover-art to file <fn>\n");
     printf("-reset n  Reset after 3n seconds client silence (default %d, 0=never)\n", NTP_TIMEOUT_LIMIT);
@@ -572,12 +572,22 @@ void parse_arguments (int argc, char *argv[]) {
     // Parse arguments
     for (int i = 1; i < argc; i++) {
         std::string arg(argv[i]);
+        
+        // -n name   Specify the network name of the AirPlay server
         if (arg == "-n") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             server_name = std::string(argv[++i]);
-        } else if (arg == "-nh") {
+            continue;
+        }
+        
+        // -nh       Do not add \"@hostname\" at the end of the AirPlay server name
+        if (arg == "-nh") {
             do_append_hostname = false;
-        } else if (arg == "-s") {
+            continue;
+        }
+        
+        // s wxh[@r]Set display resolution [refresh_rate] default 1920x1080[@60]
+        if (arg == "-s") {
             if (!option_has_value(i, argc, argv[i], argv[i+1])) exit(1);
             std::string value(argv[++i]);
             if (!get_display_settings(value, &display[0], &display[1], &display[2])) {
@@ -585,7 +595,12 @@ void parse_arguments (int argc, char *argv[]) {
                         argv[i]);
                 exit(1);
             }
-        } else if (arg == "-fps") {
+            continue;
+        }
+        
+        
+        // -fps n    Set maximum allowed streaming framerate, default 30
+        if (arg == "-fps") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             unsigned int n = 255;
             if (!get_value(argv[++i], &n)) {
@@ -593,21 +608,37 @@ void parse_arguments (int argc, char *argv[]) {
                 exit(1);
             }
             display[3] = (unsigned short) n;
-        } else if (arg == "-o") {
+            continue;
+        }
+        
+        // -o        Set display \"overscanned\" mode on (not usually needed)
+        if (arg == "-o") {
             display[4] = 1;
-        } else if (arg == "-f") {
+            continue;
+        }
+        
+        // -f {H|V|I}Horizontal|Vertical flip, or both=Inversion=rotate 180 deg
+        if (arg == "-f") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             if (!get_videoflip(argv[++i], &videoflip[0])) {
                 fprintf(stderr,"invalid \"-f %s\" , unknown flip type, choices are H, V, I\n",argv[i]);
                 exit(1);
             }
-        } else if (arg == "-r") {
+            continue;
+        }
+        
+        // -r {R|L}  Rotate 90 degrees Right (cw) or Left (ccw)
+        if (arg == "-r") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             if (!get_videorotate(argv[++i], &videoflip[1])) {
                 fprintf(stderr,"invalid \"-r %s\" , unknown rotation  type, choices are R, L\n",argv[i]);
                 exit(1);
             }
-        } else if (arg == "-p") {
+            continue;
+        } 
+        
+        // -p n      Use TCP and UDP ports n,n+1,n+2.\n
+        if (arg == "-p") {
             if (i == argc - 1 || argv[i + 1][0] == '-') {
                 tcp[0] = 7100; tcp[1] = 7000; tcp[2] = 7001;
                 udp[0] = 7011; udp[1] = 6001; udp[2] = 6000;
@@ -626,39 +657,85 @@ void parse_arguments (int argc, char *argv[]) {
                     udp[j] = tcp[j];
                 }
             }
-        } else if (arg == "-m") {
+            continue;
+        }
+        
+        // -m        Use random MAC address (use for concurrent UxPlay's)
+        if (arg == "-m") {
             use_random_hw_addr  = true;
-        } else if (arg == "-a") {
+            continue;
+        }
+        
+        // -as 0     (or -a)  Turn audio off, streamed video only
+        if (arg == "-a") {
             use_audio = false;
-        } else if (arg == "-d") {
+            continue;
+        } 
+        
+        // -d        Enable debug logging
+        if (arg == "-d") {
             debug_log = !debug_log;
-        } else if (arg == "-h") {
+            continue;
+        }
+        
+        // -h        Displays this help
+        if (arg == "-h") {
             print_info(argv[0]);
             exit(0);
-        } else if (arg == "-v") {
+        }
+        
+        // -v        Displays version information
+        if (arg == "-v") {
             printf("UxPlay version %s; for help, use option \"-h\"\n", VERSION);
             exit(0);
-        } else if (arg == "-vp") {
+        }
+        
+        // -vp ...   Choose the GSteamer h264 parser
+        if (arg == "-vp") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             video_parser.erase();
             video_parser.append(argv[++i]);
-        } else if (arg == "-vd") {
+            continue;
+            
+        }
+        
+        // -vd       Choose the GStreamer h264 decoder
+        if (arg == "-vd") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             video_decoder.erase();
             video_decoder.append(argv[++i]);
-        } else if (arg == "-vc") {
+            continue;
+            
+        }
+        
+        // -vc       Choose the GStreamer videoconverter
+        if (arg == "-vc") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             video_converter.erase();
             video_converter.append(argv[++i]);
-        } else if (arg == "-vs") {
+            continue;
+            
+        }
+        
+        // -vs      Choose the GStreamer videosink
+        if (arg == "-vs") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             videosink.erase();
             videosink.append(argv[++i]);
-        } else if (arg == "-as") {
+            continue;
+        }
+        
+        // -as      Choose the GStreamer audiosink
+        if (arg == "-as") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             audiosink.erase();
             audiosink.append(argv[++i]);
-        } else if (arg == "-t") {
+            continue;
+            
+        }
+        
+        // -t n      Relaunch server if no connection existed in last n seconds
+        if (arg == "-t") {
             if (!option_has_value(i, argc, argv[i], argv[i+1])) exit(1);
             server_timeout = 0;
             bool valid = get_value(argv[++i], &server_timeout);
@@ -666,16 +743,31 @@ void parse_arguments (int argc, char *argv[]) {
                 fprintf(stderr,"invalid \"-t %s\", must have -t n with  n > 0\n",argv[i]);
                 exit(1);
             }
-        } else if (arg == "-nc") {
+            continue;
+        }
+        
+        // -nc       do Not Close video window when client stops mirroring
+        if (arg == "-nc") {
             new_window_closing_behavior = false;
-        } else if (arg == "-avdec") {
+            continue;
+            
+        }
+        
+        // -avdec    Force software h264 video decoding with libav decoder
+        if (arg == "-avdec") {
             video_parser.erase();
             video_parser = "h264parse";
             video_decoder.erase();
             video_decoder = "avdec_h264";
             video_converter.erase();
             video_converter = "videoconvert";
-        } else if (arg == "-v4l2" || arg == "-rpi") {
+            continue;
+            
+        } 
+        
+        // -v4l2     Use Video4Linux2 for GPU hardware h264 decoding
+        // -rpi      Same as \"-v4l2\" (for RPi=Raspberry Pi).
+        if (arg == "-v4l2" || arg == "-rpi") {
             if (arg == "-rpi") {
                 printf("*** -rpi no longer includes -bt709: add it if needed\n");
             }
@@ -683,7 +775,12 @@ void parse_arguments (int argc, char *argv[]) {
             video_decoder = "v4l2h264dec";
             video_converter.erase();
             video_converter = "v4l2convert";
-        } else if (arg == "-rpifb") {
+            continue;
+            
+        }
+        
+        // -rpifb    Same as \"-rpi -vs kmssink\" for RPi using framebuffer.
+        if (arg == "-rpifb") {
             printf("*** -rpifb no longer includes -bt709: add it if needed\n");
             video_decoder.erase();
             video_decoder = "v4l2h264dec";
@@ -691,7 +788,12 @@ void parse_arguments (int argc, char *argv[]) {
             video_converter = "v4l2convert";
             videosink.erase();
             videosink = "kmssink";
-        } else if (arg == "-rpigl") {
+            continue;
+            
+        }
+        
+        // -rpigl    Same as \"-rpi -vs glimagesink\" for RPi.
+        if (arg == "-rpigl") {
             printf("*** -rpigl does not include -bt709: add it if needed\n");
             video_decoder.erase();
             video_decoder = "v4l2h264dec";
@@ -699,7 +801,12 @@ void parse_arguments (int argc, char *argv[]) {
             video_converter = "v4l2convert";
             videosink.erase();
             videosink = "glimagesink";
-        } else if (arg == "-rpiwl" ) {
+            continue;
+            
+        }
+        
+        // -rpiwl    Same as \"-rpi -vs waylandsink\" for RPi using Wayland.
+        if (arg == "-rpiwl" ) {
             printf("*** -rpiwl no longer includes -bt709: add it if needed\n");
             video_decoder.erase();
             video_decoder = "v4l2h264dec";
@@ -707,17 +814,40 @@ void parse_arguments (int argc, char *argv[]) {
             video_converter = "v4l2convert";
             videosink.erase();
             videosink = "waylandsink";
-        } else if (arg == "-fs" ) {
+            continue;
+            
+        }
+        
+        // -fs       Full-screen (only with Wayland and VAAPI plugins)
+        if (arg == "-fs" ) {
             fullscreen = true;
-	} else if (arg == "-FPSdata") {
+            continue;
+	}
+	
+	// -FPSdata  Show video-streaming performance reports sent by client.
+	if (arg == "-FPSdata") {
             show_client_FPS_data = true;
-        } else if (arg == "-reset") {
+            continue;
+            
+        }
+        
+        // -reset n  Reset after 3n seconds client silence
+        if (arg == "-reset") {
             max_ntp_timeouts = 0;
             if (!get_value(argv[++i], &max_ntp_timeouts)) {
                 fprintf(stderr, "invalid \"-reset %s\"; -reset n must have n >= 0,  default n = %d\n", argv[i], NTP_TIMEOUT_LIMIT);
                 exit(1);
             }
-        } else if (arg == "-vdmp") {
+            continue;
+        }
+        
+        /*
+        -vdmp [n] Dump h264 video output to \"fn.h264\"; fn=\"videodump\",change
+                  with \"-vdmp [n] filename\". If [n] is given, file fn.x.h264
+                  x=1,2,.. opens whenever a new SPS/PPS NAL arrives, and <=n
+                  NAL units are dumped.
+        */
+        if (arg == "-vdmp") {
             dump_video = true;
             if (option_has_value(i, argc, arg, argv[i+1])) {
                 unsigned int n = 0;
@@ -737,7 +867,18 @@ void parse_arguments (int argc, char *argv[]) {
                 }
             }
 	    printf("dump_video %d %d %s \n",dump_video, video_dump_limit, video_dumpfile_name.c_str());
-        } else if (arg == "-admp") {
+	    continue;
+	    
+        }
+        
+        
+        /*
+        -admp [n] Dump audio output to \"fn.x.fmt\", fmt ={aac, alac, aud}, x
+                  =1,2,..; fn=\"audiodump\"; change with \"-admp [n] filename\".
+                  x increases when audio format changes. If n is given, <= n
+                  audio packets are dumped. \"aud\"= unknown format.
+        */
+        if (arg == "-admp") {
             dump_audio = true;
             if (option_has_value(i, argc, arg, argv[i+1])) {
                 unsigned int n = 0;
@@ -756,7 +897,11 @@ void parse_arguments (int argc, char *argv[]) {
                     audio_dumpfile_name.append(argv[i]);
                 }
             }
-        } else if (arg  == "-ca" ) {
+            continue;
+        }
+        
+        // -ca <fn>  In Airplay Audio (ALAC) mode, write cover-art to file <fn>
+        if (arg  == "-ca" ) {
             if (option_has_value(i, argc, arg, argv[i+1])) {
                 coverart_filename.erase();
                 coverart_filename.append(argv[++i]);
@@ -764,12 +909,18 @@ void parse_arguments (int argc, char *argv[]) {
                 LOGE("option -ca must be followed by a filename for cover-art output");
                 exit(1);
             }
-        } else if (arg == "-bt709" ) {
-            bt709_fix = true;
-        } else {
-            LOGE("unknown option %s, stopping\n",argv[i]);
-            exit(1);
+            continue;
         }
+        
+        // -bt709    A workaround (bt709 color) that may be needed with -rpi
+        if (arg == "-bt709" ) {
+            bt709_fix = true;
+            continue;
+        }
+        
+        // Error: Unknown option
+        LOGE("unknown option %s, stopping\n",argv[i]);
+        exit(1);
     }
 }
 
