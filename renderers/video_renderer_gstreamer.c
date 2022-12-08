@@ -20,6 +20,7 @@
 #include "video_renderer.h"
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
+#include <gst/video/navigation.h>
 
 #ifdef X_DISPLAY_FIX
 #include "x_display_fix.h"
@@ -95,6 +96,10 @@ static video_renderer_t *renderer = NULL;
 static logger_t *logger = NULL;
 static unsigned short width, height, width_source, height_source;  /* not currently used */
 static bool first_packet = false;
+#ifdef  X_DISPLAY_FIX
+    XEvent e;
+    static bool fullscreen = false;
+#endif
 
 /* apple uses colorimetry=1:3:5:1 (not recognized by gstreamer v4l2)  *
  * See .../gst-libs/gst/video/video-color.h in gst-plugins-base  *
@@ -217,6 +222,7 @@ void video_renderer_render_buffer(raop_ntp_t *ntp, unsigned char* data, int data
         if (renderer->gst_window && !(renderer->gst_window->window)) {
             fix_x_window_name(renderer->gst_window, renderer->server_name);
         }
+
 #endif
     }
 }
@@ -258,6 +264,8 @@ void video_renderer_destroy() {
 void video_renderer_update_background(int type) {
 }
 
+
+
 gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpointer loop) {
     switch (GST_MESSAGE_TYPE (message)) {
     case GST_MESSAGE_ERROR: {
@@ -275,13 +283,13 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpoin
                      "*** Try using option -avdec to force software decoding or use -vs <videosink>\n"
                      "*** to select a videosink of your choice (see \"man uxplay\")");
         }
-	g_error_free (err);
+	    g_error_free (err);
         g_free (debug);
         gst_app_src_end_of_stream (GST_APP_SRC(renderer->appsrc));
-	flushing = TRUE;
+	    flushing = TRUE;
         gst_bus_set_flushing(bus, flushing);
- 	gst_element_set_state (renderer->pipeline, GST_STATE_NULL);
-	g_main_loop_quit( (GMainLoop *) loop);
+ 	    gst_element_set_state (renderer->pipeline, GST_STATE_NULL);
+	    g_main_loop_quit( (GMainLoop *) loop);
         break;
     }
     case GST_MESSAGE_EOS:
@@ -289,10 +297,35 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpoin
          logger_log(logger, LOGGER_INFO, "GStreamer: End-Of-Stream");
 	//   g_main_loop_quit( (GMainLoop *) loop);
         break;
+#ifdef  X_DISPLAY_FIX        
+    case GST_MESSAGE_ELEMENT: ;
+        GstNavigationMessageType mtype = gst_navigation_message_get_type (message);
+        if (mtype == GST_NAVIGATION_MESSAGE_EVENT) {
+            GstEvent *ev = NULL;
+            if (gst_navigation_message_parse_event (message, &ev)) {
+                GstNavigationEventType e_type = gst_navigation_event_get_type (ev);
+                switch (e_type) {
+                    case GST_NAVIGATION_EVENT_KEY_PRESS: ;
+                        const gchar *key;
+                        if (gst_navigation_event_parse_key_event (ev, &key)) {
+                            if (strcmp (key, "F11") == 0) 
+                            {
+                                fullscreen = !(fullscreen);
+                                set_fullscreen(renderer->gst_window->display, renderer->gst_window->window, renderer->server_name, &fullscreen);
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        break;
+#endif
     default:
       /* unhandled message */
         break;
-    }
+    }          
     return TRUE;
 }
 
