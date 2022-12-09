@@ -64,6 +64,34 @@ Window enum_windows(const char * str, Display * display, Window window, int dept
     return (Window) NULL;
 }
 
+// Fullscreen mod
+
+
+void set_fullscreen(Display* dpy, Window win, const char * name, bool* fullscreen)
+{
+    // *fullscreen = !(*fullscreen);
+    XClientMessageEvent msg = {
+        .type = ClientMessage,
+        .display = dpy,
+        .window = win,
+        .message_type = XInternAtom(dpy, "_NET_WM_STATE", True),
+        .format = 32,
+        .data = { .l = {
+                *fullscreen,
+                XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", True),
+                None,
+                0,
+                1
+            }}
+    };
+    Window root = XDefaultRootWindow(dpy);
+    win  = enum_windows(name, dpy, root, 0);
+    if (win) {
+        XSendEvent(dpy, XRootWindow(dpy, XDefaultScreen(dpy)), False, SubstructureRedirectMask | SubstructureNotifyMask, (XEvent*) &msg);
+        XSync(dpy, False);
+    }
+}
+
 void fix_x_window_name(X11_Window_t * X11, const char * name) {
     Window root = XDefaultRootWindow(X11->display);     
     X11->window  = enum_windows(name, X11->display, root, 0);
