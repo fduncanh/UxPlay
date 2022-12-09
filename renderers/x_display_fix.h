@@ -66,7 +66,6 @@ Window enum_windows(const char * str, Display * display, Window window, int dept
 
 // Fullscreen mod
 
-
 void set_fullscreen(Display* dpy, Window win, const char * name, bool* fullscreen)
 {
     // *fullscreen = !(*fullscreen);

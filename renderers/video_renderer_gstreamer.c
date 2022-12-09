@@ -222,7 +222,6 @@ void video_renderer_render_buffer(raop_ntp_t *ntp, unsigned char* data, int data
         if (renderer->gst_window && !(renderer->gst_window->window)) {
             fix_x_window_name(renderer->gst_window, renderer->server_name);
         }
-
 #endif
     }
 }
@@ -263,9 +262,6 @@ void video_renderer_destroy() {
 /* not implemented for gstreamer */
 void video_renderer_update_background(int type) {
 }
-
-
-
 gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpointer loop) {
     switch (GST_MESSAGE_TYPE (message)) {
     case GST_MESSAGE_ERROR: {
