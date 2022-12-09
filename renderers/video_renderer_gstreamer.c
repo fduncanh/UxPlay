@@ -222,7 +222,6 @@ void video_renderer_render_buffer(raop_ntp_t *ntp, unsigned char* data, int data
         if (renderer->gst_window && !(renderer->gst_window->window)) {
             fix_x_window_name(renderer->gst_window, renderer->server_name);
         }
-
 #endif
     }
 }
@@ -264,8 +263,6 @@ void video_renderer_destroy() {
 void video_renderer_update_background(int type) {
 }
 
-
-
 gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpointer loop) {
     switch (GST_MESSAGE_TYPE (message)) {
     case GST_MESSAGE_ERROR: {
@@ -283,13 +280,13 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpoin
                      "*** Try using option -avdec to force software decoding or use -vs <videosink>\n"
                      "*** to select a videosink of your choice (see \"man uxplay\")");
         }
-	    g_error_free (err);
+	g_error_free (err);
         g_free (debug);
         gst_app_src_end_of_stream (GST_APP_SRC(renderer->appsrc));
-	    flushing = TRUE;
+	flushing = TRUE;
         gst_bus_set_flushing(bus, flushing);
- 	    gst_element_set_state (renderer->pipeline, GST_STATE_NULL);
-	    g_main_loop_quit( (GMainLoop *) loop);
+ 	gst_element_set_state (renderer->pipeline, GST_STATE_NULL);
+	g_main_loop_quit( (GMainLoop *) loop);
         break;
     }
     case GST_MESSAGE_EOS:
@@ -325,7 +322,7 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpoin
     default:
       /* unhandled message */
         break;
-    }          
+    }
     return TRUE;
 }
 
