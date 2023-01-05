@@ -165,6 +165,26 @@ in [Releases](https://github.com/FDH2/UxPlay/releases).
 that original project is inactive, but is usually kept current or almost-current with the 
 [active UxPlay github site](https://github.com/FDH2/UxPlay) (thank you antimof!).
 
+## Packaging status
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/uxplay.svg)](https://repology.org/project/uxplay/versions)
+
+### FreeBSD
+
+Install via pkg:
+
+```sh
+pkg install uxplay
+```
+
+### Debian
+
+Install via apt:
+
+```sh
+apt install uxplay
+```
+
 ## Building UxPlay on  Linux (or \*BSD):
 
 ### Debian-based systems:
