@@ -1,0 +1,23 @@
+2022-12
+Contributor(s): 
+fduncanh
+F. Duncanh
+    UxPlay 1.61 remove -t option and CMakeList.txt fixes; refactor uxplay.cpp
+    Merge pull request #164 from FDH2/testUxPlay 1.61 remove -t option and CMakeList.txt fixes; refactor uxplay…
+    UxPlay 1.61 remove -t option and CMakeList.txt fixes; refactor uxplay.cpp
+    uxplay.cpp remove redundant declarations
+    uxplay.cpp move dnssd items to above start_raop_server
+    uxplay.cpp move main program to end of file
+    refactor start_raop_server to separate start_dnssd
+    update README: avahi configuration
+- - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+2022-06
+Contributor(s): 
+fduncanh
+    UxPlay 1.54 add support for display of ALAC-mode  cover art,
+    edit README
+    README: add link to "airplay_specs"
+- - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
