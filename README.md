@@ -22,7 +22,8 @@
    * Support for Raspberry Pi, with hardware video acceleration using the GStreamer
      Video4Linux2 (v4l2) plugin, which supports both 32- and 64-bit systems, as the replacement for unmaintained 32-bit OpenMAX (omx).
      See [success reports](https://github.com/FDH2/UxPlay/wiki/UxPlay-on-Raspberry-Pi:-success-reports:), so far limited to
-     distributions available through Raspberry-Pi Imager.
+     distributions available through Raspberry-Pi Imager. **NEW!** _The new-in-UxPlay-1.63  option `-vsync` now makes UxPlay viable
+     on other distributions of Raspberry Pi that do not include kernel support for  hardware decoding!_  
 
    * **New**: Support for running on Microsoft Windows (builds with the MinGW-64 compiler in the
      unix-like MSYS2 environment).
@@ -143,20 +144,19 @@ if not, software decoding is used.
    must be built by the user:
    See [these instructions](https://github.com/FDH2/UxPlay/wiki/NVIDIA-nvdec-and-nvenc-plugins).
 
-*  **Video4Linux2 support for the Raspberry Pi Broadcom GPU**
+*  **Video4Linux2 support for the Raspberry Pi Broadcom 2835 GPU**
 
-    Raspberry Pi (RPi) computers can run UxPlay with software decoding
-    of h264 video but this usually has unacceptable latency, and hardware-accelerated
-    GPU decoding should be used.  UxPlay accesses the GPU using the GStreamer
-    plugin for Video4Linux2 (v4l2), which replaces unmaintained  32-bit-only  OpenMax used by
-    RPiPlay. Fixes to the v4l2 plugin that allow it to
-    work with UxPlay on RPi are now in the GStreamer development branch, and will appear
-    in the upcoming GStreamer-1.22 release.
-    A backport (package `gstreamer1.0-plugins-good-1.18.4-2+deb11u1+rpt1`)
-    has already appeared in RPi OS (Bullseye); for it to work with uxplay 1.56 or later, you may need to use the
-    `-bt709`  option. For other distributions without the backport, you can find
-    [patching instructions for GStreamer](https://github.com/FDH2/UxPlay/wiki/Gstreamer-Video4Linux2-plugin-patches)
-    in the [UxPlay Wiki](https://github.com/FDH2/UxPlay/wiki) for GStreamer  1.18.4 and later.
+    Raspberry Pi (RPi) computers (tested on model 4 B) can now run UxPlay using  software decoding
+    of h264 video,  but hardware-accelerated decoding by firmware in the Pi's 
+    GPU is prefered.  UxPlay can access the GPU using the GStreamer Video4Linux2 (v4l2) plugin (this replaces
+    access with OpenMax, which is 32-bit only and no longer maintained, used in UxPlay's ancestor RPiPlay).  The
+    recent GStreamer-1.22 v4l2 plugin works well with UxPlay: backports have been made
+    to  GStreamer-1.18.4 in Raspberry Pi OS, and patches to this and later v1.20.x GStreamer are available in the UxPlay Wiki (see
+    [patching instructions for GStreamer](https://github.com/FDH2/UxPlay/wiki/Gstreamer-Video4Linux2-plugin-patches)). Also
+    required is the out-of-mainline Linux kernel module  bcm2835-v4l2-codec  maintained by Raspberry Pi,
+    so far only included in included in Raspberry Pi OS and other distributions (Ubuntu, Manjaro) available
+    with Raspberry Pi Imager.
+
 
 ### Note to packagers:
 
@@ -333,11 +333,15 @@ per second. (You can see what framerate is actually streaming by using -vs fpsdi
 its current client until that client drops the connection; since UxPlay-1.58, the option `-nohold` modifies this
 behavior so that when a new client requests a connection, it removes the current client and takes over.
 
-* In Audio-Only mode, use the `-sync` option to synchronize audio on the server with video
-on the client. This introduces a delay that the client adds to account for latency.  There is an 
-option `-al x` that sets the audio latency _x_  that the server reports to the client that in principle
-might modify the delay a little (this is not clear).  Here (non-negative decimal) _x_ is given  in seconds, default
-is 0.25. _Without the `-sync` option, there is no audio delay, but the client's video lags behind the server's audio._
+* In its default mode, Uxplay uses a simple GStreamer mode ("sync=false") that streams without using audio- and
+video-timestamps for synchronization. UxPlay 1.63 also introduces `-vsync` and `-async` as alternatives that use timestamps
+in  Mirror and Audio-Only modes respectively (GStreamer's "sync=true" mode).   (These options also allow an optional
+positive (or negative) audio-delay in
+milliseconds for fine-tuning : `-vsync 20.5` delays audio relative to video by 0.0205 secs; a negative value advances it.)
+Use `-async` to synchronise video on the iOS client with ALAC Audio-Only mode audio streamer to the server, for example
+when watching Apple Music song lyrics on the client. Use `-vsync` in Mirror mode
+on low-powered system such Raspberry Pi when using `-avdec` software h264 video decoding.  Simple streaming seems to maintain
+synchronisation of audio with video on desktop systems, but you may wish to experiment with `-vsync` there too.
 
 * Since UxPlay-1.54, you can display the accompanying "Cover Art" from sources like Apple Music in Audio-Only (ALAC) mode:
 run "`uxplay -ca <name> &`" in the background, then run a image viewer with an autoreload feature: an example
@@ -355,8 +359,12 @@ See [Usage](#usage) for more run-time options.
 
 ### **Special instructions for Raspberry Pi (only tested on model 4B)**:
 
-* For good performance, the Raspberry Pi needs the GStreamer Video4linux2 plugin  to use its Broadcom GPU hardware
-for decoding h264 video.   The plugin accesses the GPU using the bcm2835_codec kernel module
+* If you use the software-only (h264) video-decoding UxPlay option `-avdec`, you also need option  `-vsync` to keep
+audio and video synchronized (`-vsync`  is a new feature; before it was introduced, 
+software decoding on the Pi was not viable.)
+
+* For best performance, the Raspberry Pi needs the GStreamer Video4linux2 plugin  to use its Broadcom GPU hardware
+for decoding h264 video.   This needs the bcm2835_codec kernel module
 which is maintained by Raspberry Pi in the drivers/staging/VC04_services part of
 the [Raspberry Pi kernel tree](https://github.com/raspberrypi/linux), but
 is not yet included in the mainline  Linux kernel.  Distributions for R Pi that supply it include Raspberry Pi OS, Ubuntu, 
@@ -836,9 +844,13 @@ to guess what are  the "best" plugins to use on your system).
 A different reason for no audio occurred when  a user with a firewall only opened two udp network
 ports: **three** are required (the third one receives the audio data).
 
-**Raspberry Pi** devices (-rpi option) only work with hardware GPU decoding if the Video4Linux2 plugin in  GStreamer v1.20.x or earlier has been patched
+**Raspberry Pi** devices  only work with hardware GPU h264 video decoding if the Video4Linux2 plugin in  GStreamer v1.20.x or earlier has been patched
 (see the UxPlay [Wiki](https://github.com/FDH2/UxPlay/wiki/Gstreamer-Video4Linux2-plugin-patches) for patches).
-This may be fixed in the future when GStreamer-1.22 is released, or by backport patches in distributions such as Raspberry Pi OS (Bullseye).
+This is fixed in  GStreamer-1.22, and by backport patches from this in distributions such as Raspberry Pi OS (Bullseye): **use option `-bt709` with the
+GStreamer-1.18.4 from Raspberry Pi OS**..
+This also needs the bcm2835-codec kernel module that is not in the standard Linux kernel (it is available in Raspberry Pi OS, Ubuntu and Manjaro).
+**If you do not have this kernel module, or GStreamer < 1.22 is not patched, use options `-avdec -vsync` for software h264-decoding.**
+
 
 Sometimes "autovideosink" may select the OpenGL renderer "glimagesink" which
 may not work correctly on your system.   Try the options "-vs ximagesink" or
@@ -948,10 +960,11 @@ tvOS 12.2.1); it seems that the use of "legacy" protocol just requires bit 27 (l
 The "features" code and other settings are set in `UxPlay/lib/dnssdint.h`.
 
 # Changelog
-1.63 2023-02-06   Corrected -ao option.  Now allows audio latency reported to client to be changed
-                  from default of 0.25 sec (may not be necessary). Synchronisation of audio on server 
-                  with video on client in audio-only ALAC mode now works, as sync=true is now used in 
-                  the ALAC GStreamer pipeline.  Internal change: all times are now given in nanoseconds.
+1.63 2023-02-12   Reworked audio-video synchronization, with new options -vsync (for Mirror mode) and
+                  -async (for Audio-Only mode, to sync with client video).   Option  -vsync makes software
+                  h264 decoding of streamed videos with option -avdec viable on some recent Raspberry Pi models.
+                  Internal change: all times are now processed in nanoseconds units.   Removed -ao option
+                  introduced in 1.62.
 
 1.62 2023-01-18   Added Audio-only mode time offset -ao x to allow user synchronization of ALAC
                   audio playing on the server with video, song lyrics, etc. playing on the client.
