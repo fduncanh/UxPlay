@@ -49,13 +49,13 @@ Window enum_windows(const char * str, Display * display, Window window, int dept
     int i;
     XTextProperty text;
     XGetWMName(display, window, &text);
-    char* name;
+    char* name = NULL;
     XFetchName(display, window, &name);
     if (name != 0 &&  strcmp(str, name) == 0) {
         return window;
     }
     Window _root, parent;
-    Window* children;
+    Window* children = NULL;
     unsigned int n;
     XQueryTree(display, window, &_root, &parent, &children, &n);
     if (children != NULL) {
