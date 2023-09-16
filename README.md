@@ -28,10 +28,10 @@
 [![Current Packaging status](https://repology.org/badge/vertical-allrepos/uxplay.svg)](https://repology.org/project/uxplay/versions).
 
 * Install uxplay on Debian-based Linux systems with "`sudo apt install uxplay`"; on FreeBSD with "``sudo pkg install uxplay``".  Also
-available on Arch-based systems through AUR.
+available on Arch-based systems through AUR.   It may soon be available on some RPM-based distributions (upcoming Fedora 39?: "``sudo dnf install uxplay``").
 
-* **NEW**: while no RPM-based distributions have yet packaged UxPlay, a RPM "specfile" **uxplay.spec** is now provided with recent
-[releases](https://github.com/FDH2/UxPlay/releases) (see their "Assets"), and can also be found in the UxPlay source top directory.
+* **NEW**: for RPM-based distributions which have not packaged UxPlay, a RPM "specfile" **uxplay.spec** is now provided with recent
+[UxPlay releases](https://github.com/FDH2/UxPlay/releases) >= 1.65.3 (see their  "Assets"), and can also be found in the UxPlay source top directory.
 This can be used to build an installable RPM package. First-time RPM builders should first install the rpm-build and rpmdevtools packages,
 then create the rpmbuild tree with "`rpmdev-setuptree`".  Then download and
 copy uxplay.spec into ``~/rpmbuild/SPECS``.  In that directory, run "`rpmdev-spectool -g -R  uxplay.spec`" to download the corresponding
