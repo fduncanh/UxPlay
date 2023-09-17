@@ -1,17 +1,19 @@
-.TH UXPLAY "1" "September 2023" "1.66" "User Commands"
+.TH UXPLAY "1" "September 2023" "1.67" "User Commands"
 .SH NAME
 uxplay \- start AirPlay server
 .SH SYNOPSIS
 .B uxplay
 [\fI\,-n name\/\fR] [\fI\,-s wxh\/\fR] [\fI\,-p \/\fR[\fI\,n\/\fR]] [more \fI OPTIONS \/\fR ...]
 .SH DESCRIPTION
-UxPlay 1.66: An open\-source AirPlay mirroring (+ audio streaming) server:
+UxPlay 1.67: An open\-source AirPlay mirroring (+ audio streaming) server:
 .SH OPTIONS
 .TP
 .B
 \fB\-n\fR name   Specify the network name of the AirPlay server
 .TP
 \fB\-nh\fR       Do \fBNOT\fR append "@\fIhostname\fR" at end of AirPlay server name
+.TP
+\fB\-pair\fR     Support AirPlay (legacy) client-pairing (default: not used)
 .TP
 \fB\-vsync\fI[x]\fR Mirror mode: sync audio to video using timestamps (default)
 .IP

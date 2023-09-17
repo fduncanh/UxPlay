@@ -145,6 +145,9 @@ struct dnssd_s {
 
     char *hw_addr;
     int hw_addr_len;
+
+    uint32_t features1;
+    uint32_t features2;
 };
 
 
@@ -153,12 +156,27 @@ dnssd_t *
 dnssd_init(const char* name, int name_len, const char* hw_addr, int hw_addr_len, int *error)
 {
     dnssd_t *dnssd;
+    char *end;
 
     if (error) *error = DNSSD_ERROR_NOERROR;
 
     dnssd = calloc(1, sizeof(dnssd_t));
     if (!dnssd) {
         if (error) *error = DNSSD_ERROR_OUTOFMEM;
+        return NULL;
+    }
+
+    dnssd->features1  = strtoul(FEATURES_1, &end, 16);
+    if (!end) {
+        free (dnssd);
+        if (error) *error = DNSSD_ERROR_BADFEATURES;
+        return NULL;
+    }
+
+    dnssd->features2  = strtoul(FEATURES_2, &end, 16);
+    if (!end) {
+        free (dnssd);
+        if (error) *error = DNSSD_ERROR_BADFEATURES;
         return NULL;
     }
 
@@ -259,8 +277,11 @@ dnssd_register_raop(dnssd_t *dnssd, unsigned short port)
 {
     char servname[MAX_SERVNAME];
     DNSServiceErrorType retval;
+    char features[22];
 
     assert(dnssd);
+
+    snprintf(features, sizeof(features), "0x%X,0x%X", dnssd->features1, dnssd->features2);
 
     dnssd->TXTRecordCreate(&dnssd->raop_record, 0, NULL);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "ch", strlen(RAOP_CH), RAOP_CH);
@@ -268,7 +289,7 @@ dnssd_register_raop(dnssd_t *dnssd, unsigned short port)
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "da", strlen(RAOP_DA), RAOP_DA);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "et", strlen(RAOP_ET), RAOP_ET);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "vv", strlen(RAOP_VV), RAOP_VV);
-    dnssd->TXTRecordSetValue(&dnssd->raop_record, "ft", strlen(RAOP_FT), RAOP_FT);
+    dnssd->TXTRecordSetValue(&dnssd->raop_record, "ft", strlen(features), features);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "am", strlen(GLOBAL_MODEL), GLOBAL_MODEL);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "md", strlen(RAOP_MD), RAOP_MD);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "rhd", strlen(RAOP_RHD), RAOP_RHD);
@@ -281,7 +302,7 @@ dnssd_register_raop(dnssd_t *dnssd, unsigned short port)
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "sf", strlen(RAOP_SF), RAOP_SF);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "vs", strlen(RAOP_VS), RAOP_VS);
     dnssd->TXTRecordSetValue(&dnssd->raop_record, "vn", strlen(RAOP_VN), RAOP_VN);
-    dnssd->TXTRecordSetValue(&dnssd->raop_record, "pk", strlen(RAOP_PK), RAOP_PK);
+    dnssd->TXTRecordSetValue(&dnssd->raop_record, "pk", strlen(PK), PK);
 
     /* Convert hardware address to string */
     if (utils_hwaddr_raop(servname, sizeof(servname), dnssd->hw_addr, dnssd->hw_addr_len) < 0) {
@@ -315,8 +336,11 @@ dnssd_register_airplay(dnssd_t *dnssd, unsigned short port)
 {
     char device_id[3 * MAX_HWADDR_LEN];
     DNSServiceErrorType retval;
+    char features[22];
 
     assert(dnssd);
+
+    snprintf(features, sizeof(features), "0x%X,0x%X", dnssd->features1, dnssd->features2);
 
     /* Convert hardware address to string */
     if (utils_hwaddr_airplay(device_id, sizeof(device_id), dnssd->hw_addr, dnssd->hw_addr_len) < 0) {
@@ -327,10 +351,10 @@ dnssd_register_airplay(dnssd_t *dnssd, unsigned short port)
 
     dnssd->TXTRecordCreate(&dnssd->airplay_record, 0, NULL);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "deviceid", strlen(device_id), device_id);
-    dnssd->TXTRecordSetValue(&dnssd->airplay_record, "features", strlen(AIRPLAY_FEATURES), AIRPLAY_FEATURES);
+    dnssd->TXTRecordSetValue(&dnssd->airplay_record, "features", strlen(features), features);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "flags", strlen(AIRPLAY_FLAGS), AIRPLAY_FLAGS);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "model", strlen(GLOBAL_MODEL), GLOBAL_MODEL);
-    dnssd->TXTRecordSetValue(&dnssd->airplay_record, "pk", strlen(AIRPLAY_PK), AIRPLAY_PK);
+    dnssd->TXTRecordSetValue(&dnssd->airplay_record, "pk", strlen(PK), PK);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "pi", strlen(AIRPLAY_PI), AIRPLAY_PI);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "srcvers", strlen(AIRPLAY_SRCVERS), AIRPLAY_SRCVERS);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "vv", strlen(AIRPLAY_VV), AIRPLAY_VV);
@@ -407,5 +431,30 @@ dnssd_unregister_airplay(dnssd_t *dnssd)
     if (dnssd->raop_service == NULL) {
         free(dnssd->name);
         free(dnssd->hw_addr);
+    }
+}
+
+uint64_t dnssd_get_airplay_features(dnssd_t *dnssd) {
+  uint64_t features = ((uint64_t) dnssd->features2) << 32;
+  features += (uint64_t) dnssd->features1;
+  return features;
+}
+
+void dnssd_set_airplay_features(dnssd_t *dnssd, int bit, int val) {
+    uint32_t mask;
+    uint32_t *features;
+    if (bit < 0 || bit > 63) return;
+    if (val < 0 || val > 1) return;
+    if (bit >= 32) {
+        mask = 0x1 << (bit - 32);
+        features = &(dnssd->features2);
+    } else {
+        mask = 0x1 << bit;
+        features = &(dnssd->features1);
+    }
+    if (val) {
+      *features = *features | mask;
+    } else {
+      *features = *features & ~mask;
     }
 }

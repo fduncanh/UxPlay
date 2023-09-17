@@ -59,7 +59,7 @@
 #include "renderers/video_renderer.h"
 #include "renderers/audio_renderer.h"
 
-#define VERSION "1.66"
+#define VERSION "1.67"
 
 #define SECOND_IN_USECS 1000000
 #define SECOND_IN_NSECS 1000000000UL
@@ -124,6 +124,7 @@ static uint64_t remote_clock_offset = 0;
 static std::vector<std::string> allowed_clients;
 static std::vector<std::string> blocked_clients;
 static bool restrict_clients;
+static bool setup_legacy_pairing = false;
 
 /* 95 byte png file with a 1x1 white square (single pixel): placeholder for coverart*/
 static const unsigned char empty_image[] = {
@@ -406,6 +407,7 @@ static void print_info (char *name) {
     printf("Options:\n");
     printf("-n name   Specify the network name of the AirPlay server\n");
     printf("-nh       Do not add \"@hostname\" at the end of AirPlay server name\n");
+    printf("-pair     Support Airplay (legacy) client-pairing (default: not used)\n");
     printf("-vsync [x]Mirror mode: sync audio to video using timestamps (default)\n");
     printf("          x is optional audio delay: millisecs, decimal, can be neg.\n");
     printf("-vsync no Switch off audio/(server)video timestamp synchronization \n");
@@ -868,6 +870,8 @@ static void parse_arguments (int argc, char *argv[]) {
             fprintf(stderr, "invalid argument -al %s: must be a decimal time offset in seconds, range [0,10]\n"
                     "(like 5 or 4.8, which will be converted to a whole number of microseconds)\n", argv[i]);
             exit(1);
+        } else if (arg == "-pair") {
+            setup_legacy_pairing = true;
 	} else {
             fprintf(stderr, "unknown option %s, stopping (for help use option \"-h\")\n",argv[i]);
             exit(1);
@@ -1014,7 +1018,9 @@ static int parse_dmap_header(const unsigned char *metadata, char *tag, int *len)
 }
 
 static int register_dnssd() {
-    int dnssd_error;    
+    int dnssd_error;
+    uint64_t features;
+    
     if ((dnssd_error = dnssd_register_raop(dnssd, raop_port))) {
         if (dnssd_error == -65537) {
              LOGE("No DNS-SD Server found (DNSServiceRegister call returned kDNSServiceErr_Unknown)");
@@ -1031,6 +1037,9 @@ static int register_dnssd() {
              "(see Apple's dns_sd.h)", dnssd_error);
         return -4;
     }
+
+    LOGD("register_dnssd: advertised AirPlay service with \"Features\" code = 0x%X",
+         dnssd_get_airplay_features(dnssd));
     return 0;
 }
 
@@ -1059,9 +1068,11 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
     }
     dnssd = dnssd_init(name.c_str(), strlen(name.c_str()), hw_addr.data(), hw_addr.size(), &dnssd_error);
     if (dnssd_error) {
-        LOGE("Could not initialize dnssd library!");
+        LOGE("Could not initialize dnssd library!: error %d", dnssd_error);
         return 1;
     }
+    /* bit 27 of Features determines whether the AirPlay2 client-pairing protocol will be used (1) or not (0) */
+    dnssd_set_airplay_features(dnssd, 27, (int) setup_legacy_pairing);
     return 0;
 }
 
