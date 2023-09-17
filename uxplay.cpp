@@ -31,6 +31,8 @@
 #include <sstream>
 #include <iterator>
 #include <sys/stat.h>
+#include <cstdio>
+#include <stdarg.h>
 
 #ifdef _WIN32  /*modifications for Windows compilation */
 #include <glib.h>
@@ -51,7 +53,6 @@
 # endif
 #endif
 
-#include "log.h"
 #include "lib/raop.h"
 #include "lib/stream.h"
 #include "lib/logger.h"
@@ -116,6 +117,7 @@ static bool do_append_hostname = true;
 static bool use_random_hw_addr = false;
 static unsigned short display[5] = {0}, tcp[3] = {0}, udp[3] = {0};
 static bool debug_log = DEFAULT_DEBUG_LOG;
+static int log_level = LOGGER_INFO;
 static bool bt709_fix = false;
 static int max_connections = 2;
 static unsigned short raop_port;
@@ -125,6 +127,35 @@ static std::vector<std::string> allowed_clients;
 static std::vector<std::string> blocked_clients;
 static bool restrict_clients;
 static bool setup_legacy_pairing = false;
+
+/* logging */
+
+void log(int level, const char* format, ...) {
+    va_list vargs;
+    if (level > log_level) return;
+    switch (level) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+        printf("*** ERROR: ");
+        break;
+    case 4:
+        printf("*** WARNING: ");
+        break;
+    default:
+        break;
+    }
+    va_start(vargs, format);
+    vprintf(format, vargs);
+    printf("\n");
+    va_end(vargs);
+}
+
+#define LOGD(...) log(LOGGER_DEBUG, __VA_ARGS__)
+#define LOGI(...) log(LOGGER_INFO, __VA_ARGS__)
+#define LOGW(...) log(LOGGER_WARNING, __VA_ARGS__)
+#define LOGE(...) log(LOGGER_ERR, __VA_ARGS__)
 
 /* 95 byte png file with a 1x1 white square (single pixel): placeholder for coverart*/
 static const unsigned char empty_image[] = {
@@ -1103,14 +1134,14 @@ static bool check_blocked_client(char *deviceid) {
 // Server callbacks
 extern "C" void conn_init (void *cls) {
     open_connections++;
-    //LOGD("Open connections: %i", open_connections);
+    LOGD("Open connections: %i", open_connections);
     //video_renderer_update_background(1);
 }
 
 extern "C" void conn_destroy (void *cls) {
     //video_renderer_update_background(-1);
     open_connections--;
-    //LOGD("Open connections: %i", open_connections);
+    LOGD("Open connections: %i", open_connections);
     if (open_connections == 0) {
         remote_clock_offset = 0;
         if (use_audio) {
@@ -1377,7 +1408,7 @@ int start_raop_server (unsigned short display[5], unsigned short tcp[3], unsigne
     raop_set_udp_ports(raop, udp);
     
     raop_set_log_callback(raop, log_callback, NULL);
-    raop_set_log_level(raop, debug_log ? RAOP_LOG_DEBUG : LOGGER_INFO);
+    raop_set_log_level(raop, log_level);
 
     raop_port = raop_get_port(raop);
     raop_start(raop, &raop_port);
@@ -1504,6 +1535,8 @@ int main (int argc, char *argv[]) {
     }
     parse_arguments (argc, argv);
 
+    log_level = (debug_log ? LOGGER_DEBUG : LOGGER_INFO);
+    
 #ifdef _WIN32    /*  use utf-8 terminal output; don't buffer stdout in WIN32 when debug_log = false */
     SetConsoleOutputCP(CP_UTF8);
     if (!debug_log) {
@@ -1574,7 +1607,7 @@ int main (int argc, char *argv[]) {
 
     render_logger = logger_init();
     logger_set_callback(render_logger, log_callback, NULL);
-    logger_set_level(render_logger, debug_log ? LOGGER_DEBUG : LOGGER_INFO);
+    logger_set_level(render_logger, log_level);
 
     if (use_audio) {
       audio_renderer_init(render_logger, audiosink.c_str(), &audio_sync, &video_sync);
