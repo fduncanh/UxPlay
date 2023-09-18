@@ -19,15 +19,16 @@
 #define DNSSDINT_H
 
 #include "global.h"
+
+#define PK "b07727d6f6cd6e08b58ede525ec3cdeaa252ad9f683feb212ef8a205246554e7"
+
 #define RAOP_TXTVERS "1"
 #define RAOP_CH "2"             /* Audio channels: 2 */
 #define RAOP_CN "0,1,2,3"       /* Audio codec: PCM, ALAC, AAC, AAC ELD */
 #define RAOP_ET "0,3,5"         /* Encryption type: None, FairPlay, FairPlay SAPv2.5 */
 #define RAOP_VV "2"
-//#define FEATURES_1 "0x5A7FFEE6" /* first 32 bits of features, with bit 27 ("supports legacy pairing") ON */
 #define FEATURES_1 "0x527FFEE6" /* first 32 bits of features, with bit 27 ("supports legacy pairing") OFF */
-#define FEATURES_2 "0x0"        /* second 32 bits of features */
-#define RAOP_FT FEATURES_1 "," FEATURES_2
+#define FEATURES_2  "0x0"        /* second 32 bits of features */
 #define RAOP_RHD "5.6.0.0"
 #define RAOP_SF "0x4"
 #define RAOP_SV "false"
@@ -38,16 +39,10 @@
 #define RAOP_TP "UDP"           /* Transport protocol. Possible values: UDP or TCP or TCP,UDP */
 #define RAOP_MD "0,1,2"         /* Metadata: text, artwork, progress */
 #define RAOP_VN "65537"
-#define RAOP_PK "b07727d6f6cd6e08b58ede525ec3cdeaa252ad9f683feb212ef8a205246554e7"
 
-/* use same features for RAOP and AIRPLAY: is this correct? */
-#define AIRPLAY_FEATURES_1 FEATURES_1
-#define AIRPLAY_FEATURES_2 FEATURES_2
-#define AIRPLAY_FEATURES  AIRPLAY_FEATURES_1 "," AIRPLAY_FEATURES_2 
 #define AIRPLAY_SRCVERS GLOBAL_VERSION /*defined in global.h */
 #define AIRPLAY_FLAGS "0x4"
 #define AIRPLAY_VV "2"
-#define AIRPLAY_PK "b07727d6f6cd6e08b58ede525ec3cdeaa252ad9f683feb212ef8a205246554e7"
 #define AIRPLAY_PI "2e388006-13ba-4041-9a67-25dd4a43d536"
 
 #endif

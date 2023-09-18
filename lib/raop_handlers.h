@@ -50,16 +50,14 @@ raop_handler_info(raop_conn_t *conn,
     utils_hwaddr_airplay(hw_addr, 3 * hw_addr_raw_len, hw_addr_raw, hw_addr_raw_len);
 
     int pk_len = 0;
-    char *pk = utils_parse_hex(AIRPLAY_PK, strlen(AIRPLAY_PK), &pk_len);
-
-    uint64_t features = ((uint64_t) strtoul(AIRPLAY_FEATURES_2, NULL, 16)) << 32;
-    features += (uint64_t) strtoul(AIRPLAY_FEATURES_1, NULL, 16);
+    char *pk = utils_parse_hex(PK, strlen(PK), &pk_len);
 
     plist_t r_node = plist_new_dict();
 
     plist_t txt_airplay_node = plist_new_data(airplay_txt, airplay_txt_len);
     plist_dict_set_item(r_node, "txtAirPlay", txt_airplay_node);
 
+    uint64_t features = dnssd_get_airplay_features(conn->raop->dnssd);
     plist_t features_node = plist_new_uint(features);
     plist_dict_set_item(r_node, "features", features_node);
 

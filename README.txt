@@ -1,4 +1,4 @@
-# UxPlay 1.66: AirPlay-Mirror and AirPlay-Audio server for Linux, macOS, and Unix (now also runs on Windows).
+# UxPlay 1.67: AirPlay-Mirror and AirPlay-Audio server for Linux, macOS, and Unix (now also runs on Windows).
 
 ### Now developed at the GitHub site <https://github.com/FDH2/UxPlay> (where all user issues should be posted).
 
@@ -859,6 +859,10 @@ will also now be the name shown above the mirror display (X11) window.
 **-nh** Do not append "@_hostname_" at the end of the AirPlay server
 name.
 
+**-pair** set "Features" bit 27 to reactivate client-pairing support
+using "legacy pairing protocol" (the default since v1.65 is that bit 27
+is not set, and legacy client-pairing setup is skipped).
+
 **-vsync \[x\]** (In Mirror mode:) this option (**now the default**)
 uses timestamps to synchronize audio with video on the server, with an
 optional audio delay in (decimal) milliseconds (*x* = "20.5" means
@@ -1391,18 +1395,17 @@ A protocol failure may trigger an unending stream of error messages, and
 means that the audio decryption key (also used in video decryption) was
 not correctly extracted from data sent by the client.
 
-The protocol was modifed in UxPlay-1.65 after it was discovered that the
-client-server "pairing" step could be avoided (leading to a much quicker
-connection setup, without a 5 second delay) by disabling "Supports
-Legacy Pairing" (bit 27) in the "features" code UxPlay advertises on
-DNS-SD Service Discovery. Most clients will then not attempt the setup
-of a "shared secret key" when pairing, which is used by AppleTV for
-simultaneous handling of multiple clients (UxPlay only supports one
-client at a time). **This change is now well-tested, but in case it
-causes any protocol failures, UxPlay can be reverted to the previous
-behavior by uncommenting the previous "FEATURES_1" setting (and
-commenting out the new one) in lib/dnssdint.h, and then rebuilding
-UxPlay.**
+The default protocol was modifed in UxPlay-1.65 after it was discovered
+that the client-server "pairing" step could be avoided (leading to a
+much quicker connection setup, without a 5 second delay) by disabling
+"Supports Legacy Pairing" (bit 27) in the "features" code UxPlay
+advertises on DNS-SD Service Discovery. Most clients will then not
+attempt the setup of a "shared secret key" when pairing, which is used
+by AppleTV for simultaneous handling of multiple clients (UxPlay only
+supports one client at a time). **This change is now well-tested, but in
+case it causes any protocol failures, UxPlay can be reverted to the
+previous behavior by using the option `-pair` (option added in UxPlay
+1.67).**
 
 Protocol failure should not happen for iOS 9.3 or later clients.
 However, if a client uses the same older version of the protocol that is
@@ -1422,6 +1425,10 @@ introduced 2017, running tvOS 12.2.1), so it does not seem to matter
 what UxPlay claims to be.
 
 # Changelog
+
+1.67 2023-09-17 Make Airplay server "Features" settings accessible for
+modification in uxplay.cpp; use this to add option "-pair" to restore
+pre-1.65 client pairing protocol.
 
 1.66 2023-09-05 Fix IPV6 support. Add option to restrict clients to
 those on a list of allowed deviceIDs, or to block connections from

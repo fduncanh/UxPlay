@@ -14,6 +14,7 @@
 
 #ifndef DNSSD_H
 #define DNSSD_H
+#include <stdint.h>
 
 #if defined(WIN32) && defined(DLL_EXPORT)
 # define DNSSD_API __declspec(dllexport)
@@ -30,6 +31,7 @@ extern "C" {
 #define DNSSD_ERROR_OUTOFMEM      2
 #define DNSSD_ERROR_LIBNOTFOUND   3
 #define DNSSD_ERROR_PROCNOTFOUND  4
+#define DNSSD_ERROR_BADFEATURES   5
 
 typedef struct dnssd_s dnssd_t;
 
@@ -44,7 +46,9 @@ DNSSD_API void dnssd_unregister_airplay(dnssd_t *dnssd);
 DNSSD_API const char *dnssd_get_airplay_txt(dnssd_t *dnssd, int *length);
 DNSSD_API const char *dnssd_get_name(dnssd_t *dnssd, int *length);
 DNSSD_API const char *dnssd_get_hw_addr(dnssd_t *dnssd, int *length);
-
+DNSSD_API void dnssd_set_airplay_features(dnssd_t *dnssd, int bit, int val);
+DNSSD_API uint64_t dnssd_get_airplay_features(dnssd_t *dnssd);
+  
 DNSSD_API void dnssd_destroy(dnssd_t *dnssd);
 
 #ifdef __cplusplus

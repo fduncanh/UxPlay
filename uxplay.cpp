@@ -31,6 +31,8 @@
 #include <sstream>
 #include <iterator>
 #include <sys/stat.h>
+#include <cstdio>
+#include <stdarg.h>
 
 #ifdef _WIN32  /*modifications for Windows compilation */
 #include <glib.h>
@@ -51,7 +53,6 @@
 # endif
 #endif
 
-#include "log.h"
 #include "lib/raop.h"
 #include "lib/stream.h"
 #include "lib/logger.h"
@@ -59,7 +60,7 @@
 #include "renderers/video_renderer.h"
 #include "renderers/audio_renderer.h"
 
-#define VERSION "1.66"
+#define VERSION "1.67"
 
 #define SECOND_IN_USECS 1000000
 #define SECOND_IN_NSECS 1000000000UL
@@ -116,6 +117,7 @@ static bool do_append_hostname = true;
 static bool use_random_hw_addr = false;
 static unsigned short display[5] = {0}, tcp[3] = {0}, udp[3] = {0};
 static bool debug_log = DEFAULT_DEBUG_LOG;
+static int log_level = LOGGER_INFO;
 static bool bt709_fix = false;
 static int max_connections = 2;
 static unsigned short raop_port;
@@ -124,6 +126,36 @@ static uint64_t remote_clock_offset = 0;
 static std::vector<std::string> allowed_clients;
 static std::vector<std::string> blocked_clients;
 static bool restrict_clients;
+static bool setup_legacy_pairing = false;
+
+/* logging */
+
+void log(int level, const char* format, ...) {
+    va_list vargs;
+    if (level > log_level) return;
+    switch (level) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+        printf("*** ERROR: ");
+        break;
+    case 4:
+        printf("*** WARNING: ");
+        break;
+    default:
+        break;
+    }
+    va_start(vargs, format);
+    vprintf(format, vargs);
+    printf("\n");
+    va_end(vargs);
+}
+
+#define LOGD(...) log(LOGGER_DEBUG, __VA_ARGS__)
+#define LOGI(...) log(LOGGER_INFO, __VA_ARGS__)
+#define LOGW(...) log(LOGGER_WARNING, __VA_ARGS__)
+#define LOGE(...) log(LOGGER_ERR, __VA_ARGS__)
 
 /* 95 byte png file with a 1x1 white square (single pixel): placeholder for coverart*/
 static const unsigned char empty_image[] = {
@@ -406,6 +438,7 @@ static void print_info (char *name) {
     printf("Options:\n");
     printf("-n name   Specify the network name of the AirPlay server\n");
     printf("-nh       Do not add \"@hostname\" at the end of AirPlay server name\n");
+    printf("-pair     Support Airplay (legacy) client-pairing (default: not used)\n");
     printf("-vsync [x]Mirror mode: sync audio to video using timestamps (default)\n");
     printf("          x is optional audio delay: millisecs, decimal, can be neg.\n");
     printf("-vsync no Switch off audio/(server)video timestamp synchronization \n");
@@ -868,6 +901,8 @@ static void parse_arguments (int argc, char *argv[]) {
             fprintf(stderr, "invalid argument -al %s: must be a decimal time offset in seconds, range [0,10]\n"
                     "(like 5 or 4.8, which will be converted to a whole number of microseconds)\n", argv[i]);
             exit(1);
+        } else if (arg == "-pair") {
+            setup_legacy_pairing = true;
 	} else {
             fprintf(stderr, "unknown option %s, stopping (for help use option \"-h\")\n",argv[i]);
             exit(1);
@@ -1014,7 +1049,9 @@ static int parse_dmap_header(const unsigned char *metadata, char *tag, int *len)
 }
 
 static int register_dnssd() {
-    int dnssd_error;    
+    int dnssd_error;
+    uint64_t features;
+    
     if ((dnssd_error = dnssd_register_raop(dnssd, raop_port))) {
         if (dnssd_error == -65537) {
              LOGE("No DNS-SD Server found (DNSServiceRegister call returned kDNSServiceErr_Unknown)");
@@ -1031,6 +1068,9 @@ static int register_dnssd() {
              "(see Apple's dns_sd.h)", dnssd_error);
         return -4;
     }
+
+    LOGD("register_dnssd: advertised AirPlay service with \"Features\" code = 0x%X",
+         dnssd_get_airplay_features(dnssd));
     return 0;
 }
 
@@ -1059,9 +1099,11 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
     }
     dnssd = dnssd_init(name.c_str(), strlen(name.c_str()), hw_addr.data(), hw_addr.size(), &dnssd_error);
     if (dnssd_error) {
-        LOGE("Could not initialize dnssd library!");
+        LOGE("Could not initialize dnssd library!: error %d", dnssd_error);
         return 1;
     }
+    /* bit 27 of Features determines whether the AirPlay2 client-pairing protocol will be used (1) or not (0) */
+    dnssd_set_airplay_features(dnssd, 27, (int) setup_legacy_pairing);
     return 0;
 }
 
@@ -1092,14 +1134,14 @@ static bool check_blocked_client(char *deviceid) {
 // Server callbacks
 extern "C" void conn_init (void *cls) {
     open_connections++;
-    //LOGD("Open connections: %i", open_connections);
+    LOGD("Open connections: %i", open_connections);
     //video_renderer_update_background(1);
 }
 
 extern "C" void conn_destroy (void *cls) {
     //video_renderer_update_background(-1);
     open_connections--;
-    //LOGD("Open connections: %i", open_connections);
+    LOGD("Open connections: %i", open_connections);
     if (open_connections == 0) {
         remote_clock_offset = 0;
         if (use_audio) {
@@ -1366,7 +1408,7 @@ int start_raop_server (unsigned short display[5], unsigned short tcp[3], unsigne
     raop_set_udp_ports(raop, udp);
     
     raop_set_log_callback(raop, log_callback, NULL);
-    raop_set_log_level(raop, debug_log ? RAOP_LOG_DEBUG : LOGGER_INFO);
+    raop_set_log_level(raop, log_level);
 
     raop_port = raop_get_port(raop);
     raop_start(raop, &raop_port);
@@ -1493,6 +1535,8 @@ int main (int argc, char *argv[]) {
     }
     parse_arguments (argc, argv);
 
+    log_level = (debug_log ? LOGGER_DEBUG : LOGGER_INFO);
+    
 #ifdef _WIN32    /*  use utf-8 terminal output; don't buffer stdout in WIN32 when debug_log = false */
     SetConsoleOutputCP(CP_UTF8);
     if (!debug_log) {
@@ -1563,7 +1607,7 @@ int main (int argc, char *argv[]) {
 
     render_logger = logger_init();
     logger_set_callback(render_logger, log_callback, NULL);
-    logger_set_level(render_logger, debug_log ? LOGGER_DEBUG : LOGGER_INFO);
+    logger_set_level(render_logger, log_level);
 
     if (use_audio) {
       audio_renderer_init(render_logger, audiosink.c_str(), &audio_sync, &video_sync);
