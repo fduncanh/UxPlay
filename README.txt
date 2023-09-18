@@ -35,11 +35,12 @@ status](https://repology.org/badge/vertical-allrepos/uxplay.svg)](https://repolo
 -   Install uxplay on Debian-based Linux systems with
     "`sudo apt install uxplay`"; on FreeBSD with
     "`sudo pkg install uxplay`". Also available on Arch-based systems
-    through AUR. It may soon be available on some RPM-based
-    distributions (upcoming Fedora 39?: "`sudo dnf install uxplay`").
+    through AUR. It is also available on some RPM-based distributions
+    such as Fedora \>= 38, where it is installed by
+    "`sudo dnf install uxplay`").
 
--   **NEW**: for RPM-based distributions which have not packaged UxPlay,
-    a RPM "specfile" **uxplay.spec** is now provided with recent [UxPlay
+-   For RPM-based distributions which have not yet packaged UxPlay, a
+    RPM "specfile" **uxplay.spec** is now provided with recent [UxPlay
     releases](https://github.com/FDH2/UxPlay/releases) \>= 1.65.3 (see
     their "Assets"), and can also be found in the UxPlay source top
     directory. This can be used to build an installable RPM package.
