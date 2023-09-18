@@ -41,16 +41,15 @@ alt="Current Packaging status" /></a>.</p>
 <li><p>Install uxplay on Debian-based Linux systems with
 “<code>sudo apt install uxplay</code>”; on FreeBSD with
 “<code>sudo pkg install uxplay</code>”. Also available on Arch-based
-systems through AUR. It may soon be available on some RPM-based
-distributions (upcoming Fedora 39?:
+systems through AUR. It is also available on some RPM-based
+distributions such as Fedora &gt;= 38, where it is installed by
 “<code>sudo dnf install uxplay</code>”).</p></li>
-<li><p><strong>NEW</strong>: for RPM-based distributions which have not
-packaged UxPlay, a RPM “specfile” <strong>uxplay.spec</strong> is now
-provided with recent <a
-href="https://github.com/FDH2/UxPlay/releases">UxPlay releases</a> &gt;=
-1.65.3 (see their “Assets”), and can also be found in the UxPlay source
-top directory. This can be used to build an installable RPM package.
-First-time RPM builders should first install the rpm-build and
+<li><p>For RPM-based distributions which have not yet packaged UxPlay, a
+RPM “specfile” <strong>uxplay.spec</strong> is now provided with recent
+<a href="https://github.com/FDH2/UxPlay/releases">UxPlay releases</a>
+&gt;= 1.65.3 (see their “Assets”), and can also be found in the UxPlay
+source top directory. This can be used to build an installable RPM
+package. First-time RPM builders should first install the rpm-build and
 rpmdevtools packages, then create the rpmbuild tree with
 “<code>rpmdev-setuptree</code>”. Then download and copy uxplay.spec into
 <code>~/rpmbuild/SPECS</code>. In that directory, run
