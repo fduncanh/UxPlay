@@ -1505,8 +1505,20 @@ static void read_config_file(const char * filename, const char * uxplay_name) {
         free (argv);
     }
 }
+#ifdef GST_MACOS
+/* workaround for GStreamer >= 1.22 "Official Builds" on macOS */
+#include <TargetConditionals.h>
+#include <gst/gstmacos.h>
+int real_main (int argc, char *argv[]);
 
 int main (int argc, char *argv[]) {
+  return  gst_macos_main ((GstMainFunc) real_main, argc, argv , NULL);
+}
+
+int real_main (int argc, char *argv[]) {
+#else
+int main (int argc, char *argv[]) {
+#endif
     std::vector<char> server_hw_addr;
     std::string mac_address;
     std::string config_file = "";

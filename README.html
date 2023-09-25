@@ -652,15 +652,11 @@ should <strong>not</strong> install (or should uninstall) the GStreamer
 supplied by their package manager, if they use the “official”
 release.</p>
 <ul>
-<li><strong>ADDED 2023-01-25: in the current 1.22.x releases something
-in the GStreamer macOS binaries appears to not be working (UxPlay starts
-receiving the AirPlay stream, but the video window does not
-open)</strong>. If you have this problem, use the older GStreamer-1.20.7
-binary packages until a fix is found. <em>You could instead compile the
-“official” GStreamer-1.22.x release from source: GStreamer-1.22.0 has
-been successfully built this way on a system using MacPorts: see</em> <a
-href="https://github.com/FDH2/UxPlay/wiki/Building-GStreamer-from-Source-on-macOS-with-MacPorts">the
-UxPlay Wiki</a>.</li>
+<li><strong>ADDED 2023-09-25</strong> An issue that previously prevented
+UxPlay from using the “Official” (gstreamer.freedesktop.org)
+GStreamer-1.22.x binaries has now been fixed by using a “gst_macos_main”
+API wrapper (introduced in GStreamer-1.22) when these versions of
+GStreamer are detected.</li>
 </ul>
 <p><strong>Using Homebrew’s GStreamer</strong>: pkg-config is needed:
 (“brew install pkg-config gstreamer”). This causes a large number of
@@ -707,23 +703,30 @@ when the window width is changed by dragging its side; the option “-vs
 osxvideosink force-aspect-ratio=true” can be used to make the window
 have the correct aspect ratio when it first opens.</p></li>
 </ul>
-<p><strong><em>Using GStreamer installed from MacPorts (not
-recommended):</em></strong></p>
-<p>To install: “sudo port install pkgconf”; “sudo port install
-gstreamer1-gst-plugins-base gstreamer1-gst-plugins-good
-gstreamer1-gst-plugins-bad gstreamer1-gst-libav”. <strong>The MacPorts
-GStreamer is old (v1.16.2) and built to use X11</strong>: use the
-special CMake option <code>-DUSE_X11=ON</code> when building UxPlay.
-Then uxplay must be run from an XQuartz terminal, and needs option “-vs
-ximagesink”. On a unibody (non-retina) MacBook Pro, the default
-resolution wxh = 1920x1080 was too large, but using option “-s 800x600”
-worked. The MacPorts GStreamer pipeline seems fragile against attempts
-to change the X11 window size, or to rotations that switch a connected
-client between portrait and landscape mode while uxplay is running.
-Using the MacPorts X11 GStreamer seems only possible if the image size
-is left unchanged from the initial “-s wxh” setting (also use the
-iPad/iPhone setting that locks the screen orientation against switching
-between portrait and landscape mode as the device is rotated).</p>
+<p><strong><em>Using GStreamer installed from MacPorts</em></strong></p>
+<ul>
+<li><p>(not recommended, as the MacPorts GStreamer is old (v1.16.2),
+unmaintained and built to use X11**:</p></li>
+<li><p>Instead <a
+href="https://github.com/FDH2/UxPlay/wiki/Building-GStreamer-from-Source-on-macOS-with-MacPorts">build
+gstreamer yourself</a> if you do not want to use the “Official”
+Gstreamer binaries with MacPorts.</p></li>
+</ul>
+<p>** To install MacPorts GStreamer-1.62: “sudo port install pkgconf”;
+“sudo port install gstreamer1-gst-plugins-base
+gstreamer1-gst-plugins-good gstreamer1-gst-plugins-bad
+gstreamer1-gst-libav”. Use the special CMake option
+<code>-DUSE_X11=ON</code> when building UxPlay with it: uxplay must then
+be run from an XQuartz terminal, and needs option “-vs ximagesink”. On a
+unibody (non-retina) MacBook Pro, the default resolution wxh = 1920x1080
+was too large, but using option “-s 800x600” worked. The MacPorts
+GStreamer pipeline seems fragile against attempts to change the X11
+window size, or to rotations that switch a connected client between
+portrait and landscape mode while uxplay is running. Using the MacPorts
+X11 GStreamer seems only possible if the image size is left unchanged
+from the initial “-s wxh” setting (also use the iPad/iPhone setting that
+locks the screen orientation against switching between portrait and
+landscape mode as the device is rotated).</p>
 <h2
 id="building-uxplay-on-microsoft-windows-using-msys2-with-the-mingw-64-compiler.">Building
 UxPlay on Microsoft Windows, using MSYS2 with the MinGW-64
