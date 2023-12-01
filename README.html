@@ -104,12 +104,12 @@ Debian (10 “Buster”, 11 “Bullseye”, 12 “Bookworm”), Ubuntu (20.04 LT
 22.04 LTS, 23.04 (also Ubuntu derivatives Linux Mint, Pop!_OS), Red Hat
 and clones (Fedora 38, Rocky Linux 9.2), openSUSE Leap 15.5, Mageia 9,
 OpenMandriva “ROME”, PCLinuxOS, Arch Linux, Manjaro, and should run on
-any Linux system. Also tested on macOS 13.3 (Intel and M2), FreeBSD
-13.2, Windows 10 and 11 (64 bit).</p>
-<p>On Raspberry Pi 4 model B, it is tested on Raspberry Pi OS (Bullseye)
-(32- and 64-bit), Ubuntu 22.04 LTS and 23.04, Manjaro RPi4 23.02, and
-(without hardware video decoding) on openSUSE 15.5. Also tested on
-Raspberry Pi 3 model B+.</p>
+any Linux system. Also tested on macOS Catalina and Ventura (Intel) and
+Sonoma (M2), FreeBSD 14.0, Windows 10 and 11 (64 bit).</p>
+<p>On Raspberry Pi 4 model B, it is tested on Raspberry Pi OS (Bullseye
+and Bookworm) (32- and 64-bit), Ubuntu 22.04 LTS and 23.04, Manjaro RPi4
+23.02, and (without hardware video decoding) on openSUSE 15.5. Also
+tested on Raspberry Pi 3 model B+ and the new model 5.</p>
 <p>Its main use is to act like an AppleTV for screen-mirroring (with
 audio) of iOS/iPadOS/macOS clients (iPhone, iPod Touch, iPad, Mac
 computers) on the server display of a host running Linux, macOS, or
@@ -598,23 +598,20 @@ useful. On a system without X11 (like R Pi OS Lite) with framebuffer
 video, use <code>&lt;videosink&gt;</code> = <code>kmssink</code>. With
 the Wayland video compositor, use <code>&lt;videosink&gt;</code> =
 <code>waylandsink</code>. When using the Video4Linux2 plugin to access
-hardware video decoding, an option <code>-v4l2</code> may be useful: for
-convenience, this also comes combined with various videosink options as
-<code>-rpi</code>, <code>-rpigl</code> <code>-rpifb</code>,
-<code>-rpiwl</code>, respectively provided for X11, X11 with OpenGL,
-framebuffer, and Wayland systems. <strong>You may find that just
-“<code>uxplay</code>”, (<em>without</em> <code>-v4l2</code> or
-<code>-rpi*</code> options, which lets GStreamer try to find the best
+hardware video decoding, an option <code>-v4l2</code> may be useful.
+<strong>You may find that just “<code>uxplay</code>”, (<em>without</em>
+the <code>-v4l2</code> option, which lets GStreamer try to find the best
 video solution by itself) provides the best results</strong> (the
-<code>-rpi*</code> options may be removed in a future release of
-UxPlay.)</p>
+former<code>-rpi*</code> options were equivalent to <code>-v4l2</code>
+or <code>-v4l2</code> plus one of the ‘-vs’ options, and were removed in
+UxPlay v1.67 as they do not apply to R Pi model 5.)</p>
 <ul>
 <li><p>If you are using Raspberry Pi OS (Bullseye) with Video4Linux2
 from unpatched GStreamer-1.18.4, you need the <code>-bt709</code> option
-with UxPlay-1.56 or later. Also don’t use options <code>-v4l2</code> and
-<code>-rpi*</code> with it, as they cause a crash if the client screen
-is rotated. (These issues do not occur when the latest GStreamer-1.18.4
-patch from the UxPlay Wiki has been applied.)</p></li>
+with UxPlay-1.56 or later. Also don’t use option <code>-v4l2</code> with
+it, as this causes a crash if the client screen is rotated. (These
+issues do not occur when the latest GStreamer-1.18.4 patch from the
+UxPlay Wiki has been applied.)</p></li>
 <li><p>Tip: to start UxPlay on a remote host (such as a Raspberry Pi)
 using ssh:</p></li>
 </ul>
@@ -871,22 +868,20 @@ the mirror display (X11) window.</p>
 <p><strong>-nh</strong> Do not append “<span class="citation"
 data-cites="_hostname_">@_hostname_</span>” at the end of the AirPlay
 server name.</p>
-<p><strong>-pin [nnnn]</strong>: use Apple-style (one-time) “pin”
-authentication when a new client connects for the first time: a
-four-digit pin code is displayed on the terminal, and the client screen
-shows a login prompt for this to be entered. When “-pin” is used by
-itself, a new randon pin code is chosen for each authentication; “-pin
-nnnn” (e.g., “-pin 3939”) will set an unchanging fixed code. Persistence
-of client authentication requires that the public key of the UxPlay
-server remains the same each time it is started: this is achieved by
-storing the key in a file (which by default is $HOME/.uxplay.pem, but
-which can be changed with the <code>"-key &lt;filename&gt;"</code>
-option) which (if it does not exist) is created the first time the -pin
-option is used, and is subsequently read each time the server starts. So
-long as this file is not deleted or moved, clients will not have to
-authenticate again after their first successful authentication. <em>(Add
-a “pin” entry in the UxPlay startup file if you wish the UxPlay server
-to use this protocol).</em></p>
+<p><strong>-pin [nnnn]</strong>: (since v1.67) use Apple-style
+(one-time) “pin” authentication when a new client connects for the first
+time: a four-digit pin code is displayed on the terminal, and the client
+screen shows a login prompt for this to be entered. When “-pin” is used
+by itself, a new random pin code is chosen for each authentication; if
+“-pin nnnn” (e.g., “-pin 3939”) is used, this will set an unchanging
+fixed code. To retain client authentication after UxPlay restarts, at
+the first use of “-pin”, the server public key is written to file
+(default: $HOME/.uxplay.pem; can be changed with option
+<code>-key &lt;filename&gt;</code>), and read back in at subsequent
+UxPlay startups. As long as this file is not deleted or moved, a client
+will not have to re-authenticate after an initial authentication.
+<em>(Add a “pin” entry in the UxPlay startup file if you wish the UxPlay
+server to use this protocol).</em></p>
 <p><strong>-vsync [x]</strong> (In Mirror mode:) this option
 (<strong>now the default</strong>) uses timestamps to synchronize audio
 with video on the server, with an optional audio delay in (decimal)
@@ -992,16 +987,14 @@ Video4Linux2 plugin to recognize Apple’s use of an uncommon (but
 permitted) “full-range color” variant of the bt709 color standard for
 digital TV. This is no longer needed by GStreamer-1.20.4 and backports
 from it.</p>
-<p><strong>-rpi</strong> Equivalent to “-v4l2”. Use for “Desktop”
-Raspberry Pi systems with X11.</p>
+<p><strong>-rpi</strong> Equivalent to “-v4l2” (Not valid for Raspberry
+Pi model 5, and removed in UxPlay 1.67)</p>
 <p><strong>-rpigl</strong> Equivalent to “-rpi -vs glimagesink”.
-Sometimes better for “Desktop” Raspberry Pi systems with X11.</p>
-<p><strong>-rpifb</strong> Equivalent to “-rpi -vs kmssink” (use for
-Raspberry Pi systems using the framebuffer, like RPi OS Bullseye
-Lite).</p>
-<p><strong>-rpiwl</strong> Equivalent to “-rpi -vs waylandsink”, for
-Raspberry Pi “Desktop” systems using the Wayland video compositor (use
-for Ubuntu 21.10 for Raspberry Pi 4B).</p>
+(Removed since UxPlay 1.67)</p>
+<p><strong>-rpifb</strong> Equivalent to “-rpi -vs kmssink” (Removed
+since UxPlay 1.67)</p>
+<p><strong>-rpiwl</strong> Equivalent to “-rpi -vs waylandsink”.
+(Removed since UxPlay 1.67)</p>
 <p><strong>-as <em>audiosink</em></strong> chooses the GStreamer
 audiosink, instead of letting autoaudiosink pick it for you. Some
 audiosink choices are: pulsesink, alsasink, pipewiresink, osssink,
@@ -1090,11 +1083,13 @@ H with V).</p>
 <p><strong>-r {R|L}</strong> 90 degree Right (clockwise) or Left
 (counter-clockwise) rotations; these image transforms are carried out
 after any <strong>-f</strong> transforms.</p>
-<p><strong>-m</strong> generates a random MAC address to use instead of
-the true hardware MAC number of the computer’s network card. (Different
-server_name, MAC addresses, and network ports are needed for each
-running uxplay if you attempt to run two instances of uxplay on the same
-computer.) If UxPlay fails to find the true MAC address of a network
+<p><strong>-m [mac]</strong> changes the MAC address (Device ID) used by
+UxPlay (default is to use the true hardware MAC address reported by the
+host computer’s network card). (Different server_name, MAC addresses,
+and network ports are needed for each running uxplay if you attempt to
+run more than one instance of uxplay on the same computer.) If [mac] (in
+form xx:xx:xx:xx:xx:xx, 6 hex octets) is not given, a random MAC address
+is generated. If UxPlay fails to find the true MAC address of a network
 card, (more specifically, the MAC address used by the first active
 network interface detected) a random MAC address will be used even if
 option <strong>-m</strong> was not specified. (Note that a random MAC
@@ -1106,8 +1101,6 @@ set in the UxPlay startup file as a line “<code>key filename</code>” (no
 initial “-”), where <code>filename</code> is a full path. The filename
 may be enclosed in quotes (<code>"...."</code>), (and must be, if the
 filename has any blank spaces).</p>
-<p><strong>-t <em>timeout</em></strong> [This option was removed in
-UxPlay v.1.61.]</p>
 <p><strong>-vdmp</strong> Dumps h264 video to file videodump.h264. -vdmp
 n dumps not more than n NAL units to videodump.x.h264; x= 1,2,…
 increases each time a SPS/PPS NAL unit arrives. To change the name
@@ -1412,7 +1405,9 @@ supports one client at a time). <strong>This change is now well-tested,
 but in case it causes any protocol failures, UxPlay can be reverted to
 the previous behavior by uncommenting the previous “FEATURES_1” setting
 (and commenting out the new one) in lib/dnssdint.h, and then rebuilding
-UxPlay.</strong></p>
+UxPlay.</strong> (“Pairing” is re-enabled when the new Apple-style
+one-time “pin” authentication is activated by running UxPlay with the
+“-pin” option introduced in UxPlay 1.67.)</p>
 <p>Protocol failure should not happen for iOS 9.3 or later clients.
 However, if a client uses the same older version of the protocol that is
 used by the Windows-based AirPlay client emulator <em>AirMyPC</em>, the
@@ -1428,12 +1423,16 @@ an AppleTV3,2 (a 32 bit device) with a sourceVersion 220.68; this can
 also be changed in global.h. UxPlay also works if it declares itself as
 an AppleTV6,2 with sourceVersion 380.20.1 (an AppleTV 4K 1st gen,
 introduced 2017, running tvOS 12.2.1), so it does not seem to matter
-what UxPlay claims to be.</p>
+what version UxPlay claims to be.</p>
 <h1 id="changelog">Changelog</h1>
-<p>1.67 2023-11-29 Add support for Apple-style one-time pin
+<p>1.67 2023-11-30 Add support for Apple-style one-time pin
 authentication of clients with option “-pin”: (SRP6a authentication
-protocol) and public key persistence. Detection of (so far) unsupported
-H265 video when requesting high resolution over wired ethernet.</p>
+protocol) and public key persistence. Detection with error message of
+(currently) unsupported H265 video when requesting high resolution over
+wired ethernet. Removed rpi* options (which are not valid with new
+Raspberry Pi model 5, and can be replaced by combinations of other
+options). Added optional argument “mac” to “-m” option, to specify a
+replacement MAC address/Device ID.</p>
 <p>1.66 2023-09-05 Fix IPV6 support. Add option to restrict clients to
 those on a list of allowed deviceIDs, or to block connections from
 clients on a list of blocked deviceIDs. Fix for #207 from <span
