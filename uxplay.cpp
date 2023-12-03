@@ -1569,6 +1569,11 @@ extern "C" void audio_set_metadata(void *cls, const void *buffer, int buflen) {
     }
 }
 
+extern "C" void register_client(void *cls, const char *device_id, const char *client_pk_str) {
+    /* pair-setup-pin client registration by the server could be implemented here, but will not be */
+    LOGD("registered new client: DeviceID = %s\nPK = \"%s\"\n", device_id, client_pk_str);
+}
+  
 extern "C" void log_callback (void *cls, int level, const char *msg) {
     switch (level) {
         case LOGGER_DEBUG: {
@@ -1612,7 +1617,8 @@ int start_raop_server (unsigned short display[5], unsigned short tcp[3], unsigne
     raop_cbs.audio_set_coverart = audio_set_coverart;
     raop_cbs.report_client_request = report_client_request;
     raop_cbs.display_pin = display_pin;
-
+    raop_cbs.register_client = register_client;
+    
     /* set max number of connections = 2 to protect against capture by new client */
     raop = raop_init(max_connections, &raop_cbs, keyfile.c_str());
     if (raop == NULL) {

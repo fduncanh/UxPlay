@@ -60,4 +60,5 @@ int srp_validate_proof(pairing_session_t *session, pairing_t *pairing, const uns
 		       int len_A, unsigned char *proof, int client_proof_len, int proof_len);
 int srp_confirm_pair_setup(pairing_session_t *session, pairing_t *pairing, unsigned char *epk,
                            unsigned char *auth_tag);
+void access_client_session_data(pairing_session_t *session, char **username, unsigned char **client_pk, bool *setup);
 #endif

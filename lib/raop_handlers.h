@@ -341,8 +341,17 @@ raop_handler_pairsetup_pin(raop_conn_t *conn,
             logger_log(conn->raop->logger, LOGGER_ERR, "pair-pin-setup (step 3): client authentication failed\n");
             goto authentication_failed;
         } else {
-            logger_log(conn->raop->logger, LOGGER_INFO, "pair-pin-setup success\n");
-	}
+            bool client_pair_setup;
+            char *client_device_id;
+            unsigned char *client_pk;
+            access_client_session_data(conn->session, &client_device_id, &client_pk, &client_pair_setup);
+            char * client_pk_str = utils_pk_to_string(client_pk, ED25519_KEY_SIZE);
+            if (conn->raop->callbacks.register_client) {
+	        conn->raop->callbacks.register_client(conn->raop->callbacks.cls, client_device_id, client_pk_str);
+            }
+            free (client_pk_str);
+            logger_log(conn->raop->logger, LOGGER_DEBUG, "pair-pin-setup success\n");
+        }
         pairing_session_set_setup_status(conn->session);
         plist_t res_root_node = plist_new_dict();
         plist_t res_epk_node = plist_new_data((const char *) epk, 32);
@@ -397,9 +406,13 @@ raop_handler_pairverify(raop_conn_t *conn,
                         http_request_t *request, http_response_t *response,
                         char **response_data, int *response_datalen)
 {
+    /* registered pair-setup-pin clients will initially arrive here without handshake_status set. 
+     * since we are not storing registration records to check if client public key corresponds to a
+     * registered client, we will just skip the following test */
+  
     //if (pairing_session_check_handshake_status(conn->session)) {
-    //     return;
-    // }
+    //    return;
+    //}
     unsigned char public_key[X25519_KEY_SIZE];
     unsigned char signature[PAIRING_SIG_SIZE];
     const unsigned char *data;
@@ -412,7 +425,7 @@ raop_handler_pairverify(raop_conn_t *conn,
     }
     switch (data[0]) {
         case 1:
-            if (datalen != 4 + X25519_KEY_SIZE + X25519_KEY_SIZE) {
+            if (datalen != 4 + X25519_KEY_SIZE + ED25519_KEY_SIZE) {
                 logger_log(conn->raop->logger, LOGGER_ERR, "Invalid pair-verify data");
                 return;
             }

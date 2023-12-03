@@ -60,6 +60,7 @@ struct raop_callbacks_s {
     void  (*video_report_size)(void *cls, float *width_source, float *height_source, float *width, float *height);
     void  (*report_client_request) (void *cls, char *deviceid, char *model, char *name, bool *admit);
     void  (*display_pin) (void *cls, char * pin);
+    void  (*register_client) (void *cls, const char *device_id, const char *pk_str);
 };
 typedef struct raop_callbacks_s raop_callbacks_t;
 raop_ntp_t *raop_ntp_init(logger_t *logger, raop_callbacks_t *callbacks, const char *remote, int remote_addr_len,
