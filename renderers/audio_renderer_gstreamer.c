@@ -357,10 +357,11 @@ void audio_renderer_render_buffer(unsigned char* data, int *data_len, unsigned s
 
 void audio_renderer_set_volume(float volume) {
     float avol;
-        if (fabs(volume) < 28) {
-	    avol=floorf(((28-fabs(volume))/28)*10)/10;
-    	    g_object_set(renderer->volume, "volume", avol, NULL);
-        }
+	if (volume < -30.0) volume = -30.0;
+	if (volume > 0.0) volume = 0.0;
+	avol = (volume / 30.0) + 1.0;
+	avol = avol * avol;
+	g_object_set(renderer->volume, "volume", avol, NULL);
 }
 
 void audio_renderer_flush() {
