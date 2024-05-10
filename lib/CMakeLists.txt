@@ -29,6 +29,15 @@ message( STATUS "using CMAKE_CFLAGS: " ${CMAKE_C_FLAGS} )
 #activate the NOHOLD feature to drop existing connections if a third connection is made 
 add_definitions( -DNOHOLD )
 
+if ( APPLE )
+   if ( NOT IPV6 )
+      message ( STATUS " Disable IPV6 on MacOS " )
+      add_definitions( -DDISABLE_IPV6 )
+    else ()
+      message (STATUS " Enable IPV6 on macOS " )
+      endif()
+endif()
+       
 INCLUDE (CheckIncludeFiles)
 if( WIN32 )
 CHECK_INCLUDE_FILES ("winsock2.h" WINSOCK2 )
