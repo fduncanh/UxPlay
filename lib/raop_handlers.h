@@ -737,20 +737,10 @@ raop_handler_setup(raop_conn_t *conn,
         conn->raop_ntp = NULL;
         conn->raop_rtp = NULL;
         conn->raop_rtp_mirror = NULL;
-        if (conn->remotelen == 4 || conn->remotelen == 16) {
-            char remote[40];
-            if (conn->remotelen == 4) {
-                /* IPV4 */
-                snprintf(remote, sizeof(remote), "%d.%d.%d.%d", conn->remote[0], conn->remote[1],
-                         conn->remote[2], conn->remote[3]);
-            } else {
-                /*IPV6*/
-                snprintf(remote, sizeof(remote), "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-                         conn->remote[0], conn->remote[1], conn->remote[2], conn->remote[3],
-                         conn->remote[4], conn->remote[5], conn->remote[6], conn->remote[7],
-                         conn->remote[8], conn->remote[9], conn->remote[10], conn->remote[11],
-                         conn->remote[12], conn->remote[13], conn->remote[14], conn->remote[15]);
-            }
+        char remote[40];
+	int len = utils_ipaddress_to_string(conn->remotelen, conn->remote, conn->zone_id, remote, (int) sizeof(remote));
+	assert(len < sizeof(remote));
+	if (len) {
             conn->raop_ntp = raop_ntp_init(conn->raop->logger, &conn->raop->callbacks, remote,
                                            conn->remotelen, (unsigned short) timing_rport, &time_protocol);
             raop_ntp_start(conn->raop_ntp, &timing_lport, conn->raop->max_ntp_timeouts);

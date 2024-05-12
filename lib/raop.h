@@ -65,8 +65,8 @@ struct raop_callbacks_s {
     void  (*export_dacp) (void *cls, const char *active_remote, const char *dacp_id);
 };
 typedef struct raop_callbacks_s raop_callbacks_t;
-raop_ntp_t *raop_ntp_init(logger_t *logger, raop_callbacks_t *callbacks, const char *remote, int remote_addr_len,
-                          unsigned short timing_rport, timing_protocol_t *time_protocol);
+raop_ntp_t *raop_ntp_init(logger_t *logger, raop_callbacks_t *callbacks, const char *remote,
+                          int remote_addr_len, unsigned short timing_rport, timing_protocol_t *time_protocol);
 
 RAOP_API raop_t *raop_init(raop_callbacks_t *callbacks);
 RAOP_API int raop_init2(raop_t *raop, int max_clients, const char *device_id, const char *keyfile);

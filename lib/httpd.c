@@ -115,7 +115,8 @@ httpd_remove_connection(httpd_t *httpd, http_connection_t *connection)
 }
 
 static int
-httpd_add_connection(httpd_t *httpd, int fd, unsigned char *local, int local_len, unsigned char *remote, int remote_len)
+httpd_add_connection(httpd_t *httpd, int fd, unsigned char *local, int local_len, unsigned char *remote,
+                     int remote_len, unsigned int zone_id)
 {
     void *user_data;
     int i;
@@ -131,7 +132,7 @@ httpd_add_connection(httpd_t *httpd, int fd, unsigned char *local, int local_len
         return -1;
     }
 
-    user_data = httpd->callbacks.conn_init(httpd->callbacks.opaque, local, local_len, remote, remote_len);
+    user_data = httpd->callbacks.conn_init(httpd->callbacks.opaque, local, local_len, remote, remote_len, zone_id);
     if (!user_data) {
         logger_log(httpd->logger, LOGGER_ERR, "Error initializing HTTP request handler");
         return -1;
@@ -152,6 +153,7 @@ httpd_accept_connection(httpd_t *httpd, int server_fd, int is_ipv6)
     struct sockaddr_storage local_saddr;
     socklen_t local_saddrlen;
     unsigned char *local, *remote;
+    unsigned int local_zone_id, remote_zone_id;
     int local_len, remote_len;
     int ret, fd;
 
@@ -172,9 +174,10 @@ httpd_accept_connection(httpd_t *httpd, int server_fd, int is_ipv6)
 
     logger_log(httpd->logger, LOGGER_INFO, "Accepted %s client on socket %d",
                (is_ipv6 ? "IPv6"  : "IPv4"), fd);
-    local = netutils_get_address(&local_saddr, &local_len);
-    remote = netutils_get_address(&remote_saddr, &remote_len);
-
+    local = netutils_get_address(&local_saddr, &local_len, &local_zone_id);
+    remote = netutils_get_address(&remote_saddr, &remote_len, &remote_zone_id);
+    assert (local_zone_id == remote_zone_id);
+    
 #ifdef NOHOLD
     /* remove existing connections to make way for new connections:
      * this will only occur if max_connections > 2 */
@@ -190,7 +193,7 @@ httpd_accept_connection(httpd_t *httpd, int server_fd, int is_ipv6)
     }
 #endif
     
-    ret = httpd_add_connection(httpd, fd, local, local_len, remote, remote_len);
+    ret = httpd_add_connection(httpd, fd, local, local_len, remote, remote_len, local_zone_id);
     if (ret == -1) {
         shutdown(fd, SHUT_RDWR);
         closesocket(fd);

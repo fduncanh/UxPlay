@@ -88,6 +88,8 @@ struct raop_conn_s {
     unsigned char *remote;
     int remotelen;
 
+    unsigned int zone_id;
+
     bool have_active_remote;
 };
 typedef struct raop_conn_s raop_conn_t;
@@ -95,10 +97,10 @@ typedef struct raop_conn_s raop_conn_t;
 #include "raop_handlers.h"
 
 static void *
-conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remote, int remotelen) {
+conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remote, int remotelen, unsigned int zone_id) {
     raop_t *raop = opaque;
     raop_conn_t *conn;
-
+    char ip_address[40];
     assert(raop);
 
     conn = calloc(1, sizeof(raop_conn_t));
@@ -122,26 +124,12 @@ conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remot
         return NULL;
     }
 
-    if (locallen == 4) {
-        logger_log(conn->raop->logger, LOGGER_INFO,
-                   "Local: %d.%d.%d.%d",
-                   local[0], local[1], local[2], local[3]);
-    } else if (locallen == 16) {
-        logger_log(conn->raop->logger, LOGGER_INFO,
-                   "Local: %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-                   local[0], local[1], local[2], local[3], local[4], local[5], local[6], local[7],
-                   local[8], local[9], local[10], local[11], local[12], local[13], local[14], local[15]);
-    }
-    if (remotelen == 4) {
-        logger_log(conn->raop->logger, LOGGER_INFO,
-                   "Remote: %d.%d.%d.%d",
-                   remote[0], remote[1], remote[2], remote[3]);
-    } else if (remotelen == 16) {
-        logger_log(conn->raop->logger, LOGGER_INFO,
-                   "Remote: %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-                   remote[0], remote[1], remote[2], remote[3], remote[4], remote[5], remote[6], remote[7],
-                   remote[8], remote[9], remote[10], remote[11], remote[12], remote[13], remote[14], remote[15]);
-    }
+
+    utils_ipaddress_to_string(locallen, local, zone_id, ip_address, (int) sizeof(ip_address));
+    logger_log(conn->raop->logger, LOGGER_INFO, "Local : %s", ip_address);
+
+    utils_ipaddress_to_string(remotelen, remote, zone_id, ip_address, (int) sizeof(ip_address));
+    logger_log(conn->raop->logger, LOGGER_INFO, "Remote: %s", ip_address);
 
     conn->local = malloc(locallen);
     assert(conn->local);
@@ -151,8 +139,11 @@ conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remot
     assert(conn->remote);
     memcpy(conn->remote, remote, remotelen);
 
+    conn->zone_id = zone_id;
+    
     conn->locallen = locallen;
     conn->remotelen = remotelen;
+
     conn->have_active_remote = false;
     
     if (raop->callbacks.conn_init) {
