@@ -359,7 +359,7 @@ httpd_thread(void *arg)
             if (http_request_is_complete(connection->request)) {
                 http_response_t *response = NULL;
                 // Callback the received data to raop
-		if (logger_debug) {
+		        if (logger_debug) {
                     const char *method = http_request_get_method(connection->request);
                     const char *url = http_request_get_url(connection->request);
                     const char *protocol = http_request_get_protocol(connection->request);

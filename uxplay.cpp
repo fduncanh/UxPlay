@@ -2161,11 +2161,12 @@ int main (int argc, char *argv[]) {
         stop_dnssd();
         goto cleanup;
     }
-    if (register_dnssd()) {
-        stop_raop_server();
-        stop_dnssd();
-        goto cleanup;
-    }
+    register_dnssd();
+    // if (register_dnssd()) {
+    //     stop_raop_server();
+    //     stop_dnssd();
+    //     goto cleanup;
+    // }
     reconnect:
     compression_type = 0;
     close_window = new_window_closing_behavior; 
