@@ -141,6 +141,7 @@ static std::vector <std::string> registered_keys;
 static double db_low = -30.0;
 static double db_high = 0.0;
 static bool taper_volume = false;
+static bool bluetooth_advertisement = false;
 
 /* logging */
 
@@ -634,6 +635,7 @@ static void print_info (char *name) {
     printf("          =1,2,..; fn=\"audiodump\"; change with \"-admp [n] filename\".\n");
     printf("          x increases when audio format changes. If n is given, <= n\n");
     printf("          audio packets are dumped. \"aud\"= unknown format.\n");
+    printf("-btip     Advertise IP Address of this receiver over Bluetooth for discovery\n");
     printf("-d        Enable debug logging\n");
     printf("-v        Displays version information\n");
     printf("-h        Displays this help\n");
@@ -1126,6 +1128,8 @@ static void parse_arguments (int argc, char *argv[]) {
             db_low = db1;
             db_high = db2;
 	    printf("db range %f:%f\n", db_low, db_high);
+        } else if (arg == "-btip") {
+            bluetooth_advertisement = true;
         } else {
             fprintf(stderr, "unknown option %s, stopping (for help use option \"-h\")\n",argv[i]);
             exit(1);
@@ -2155,8 +2159,10 @@ int main (int argc, char *argv[]) {
     }
 
     restart:
-    configure_ble("eth0");
-    ble_advertise(true);
+    if (bluetooth_advertisement) {
+        configure_ble("eth0");
+        ble_advertise(true);
+    }
     if (start_dnssd(server_hw_addr, server_name)) {
         goto cleanup;
     }
@@ -2204,7 +2210,9 @@ int main (int argc, char *argv[]) {
         stop_dnssd();
     }
     cleanup:
-    ble_advertise(false);
+    if (bluetooth_advertisement) {
+        ble_advertise(false);
+    }
     if (use_audio) {
         audio_renderer_destroy();
     }
