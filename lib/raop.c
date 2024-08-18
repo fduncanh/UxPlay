@@ -209,7 +209,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     }
 
     /* this rejects unsupported messages from _airplay._tcp for video streaming protocol*/
-    if (!cseq) {
+    if (!cseq && strstr(url, "/info") == NULL) {
         return;
     }
     
@@ -255,7 +255,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
 
     logger_log(conn->raop->logger, LOGGER_DEBUG, "Handling request %s with URL %s", method, url);
     raop_handler_t handler = NULL;
-    if (!strcmp(method, "GET") && !strcmp(url, "/info")) {
+    if (!strcmp(method, "GET") && strstr(url, "/info") != NULL) {
         handler = &raop_handler_info;
     } else if (!strcmp(method, "POST") && !strcmp(url, "/pair-pin-start")) {
         handler = &raop_handler_pairpinstart;
@@ -292,7 +292,9 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     }
     finish:;
     http_response_add_header(*response, "Server", "AirTunes/"GLOBAL_VERSION);
-    http_response_add_header(*response, "CSeq", cseq);    
+    if (cseq) {
+        http_response_add_header(*response, "CSeq", cseq);    
+    }
     http_response_finish(*response, response_data, response_datalen);
 
     int len;

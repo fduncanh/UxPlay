@@ -59,6 +59,7 @@
 #include "lib/stream.h"
 #include "lib/logger.h"
 #include "lib/dnssd.h"
+#include "lib/ble.h"
 #include "renderers/video_renderer.h"
 #include "renderers/audio_renderer.h"
 
@@ -2154,6 +2155,8 @@ int main (int argc, char *argv[]) {
     }
 
     restart:
+    configure_ble("eth0");
+    ble_advertise(true);
     if (start_dnssd(server_hw_addr, server_name)) {
         goto cleanup;
     }
@@ -2201,6 +2204,7 @@ int main (int argc, char *argv[]) {
         stop_dnssd();
     }
     cleanup:
+    ble_advertise(false);
     if (use_audio) {
         audio_renderer_destroy();
     }

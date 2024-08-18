@@ -59,6 +59,11 @@ raop_handler_info(raop_conn_t *conn,
     plist_t txt_airplay_node = plist_new_data(airplay_txt, airplay_txt_len);
     plist_dict_set_item(res_node, "txtAirPlay", txt_airplay_node);
 
+    int raop_txt_len = 0;
+    const char *raop_txt = dnssd_get_raop_txt(conn->raop->dnssd, &raop_txt_len);
+    plist_t txt_raop_node = plist_new_data(raop_txt, raop_txt_len);
+    plist_dict_set_item(res_node, "txtRAOP", txt_raop_node);
+
     uint64_t features = dnssd_get_airplay_features(conn->raop->dnssd);
     plist_t features_node = plist_new_uint(features);
     plist_dict_set_item(res_node, "features", features_node);

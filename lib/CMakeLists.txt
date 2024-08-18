@@ -163,3 +163,8 @@ if ( NOT APPLE )
     target_include_directories( airplay PRIVATE ${DNSSD_INCLUDE_DIR} )
   endif()
 endif()	
+
+pkg_check_modules (BLUETOOTH REQUIRED bluez)
+include_directories(${BLUETOOTH_INCLUDE_DIRS})
+# link_directories(${BLUEZ_LIBRARY_DIRS})
+target_link_libraries( airplay PUBLIC ${BLUETOOTH_LIBRARIES} )
