@@ -36,7 +36,7 @@ static int open_device(char *device_name) {
     return dd;
 }
 
-static void send_command(uint8_t ogf, uint16_t ocf, int len, unsigned char *data) {
+static int send_command(uint8_t ogf, uint16_t ocf, int len, unsigned char *data) {
     struct hci_filter flt;
 
     int dd = open_device(DEVICE_NAME);
@@ -47,16 +47,17 @@ static void send_command(uint8_t ogf, uint16_t ocf, int len, unsigned char *data
     if (setsockopt(dd, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
         hci_close_dev(dd);
         printf("HCI filter set up failed");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     if (hci_send_cmd(dd, ogf, ocf, len, data) < 0) {
         hci_close_dev(dd);
-        printf("Failed to send command to controller");
-        exit(EXIT_FAILURE);
+        printf("Failed to send BLE command to controller (usually requires elevated privileges)\n");
+        return -1;
     }
 
     hci_close_dev(dd);
+    return 0;
 }
 
 static char* get_ip_addr(const char *interface) {
@@ -83,7 +84,7 @@ static char* get_ip_addr(const char *interface) {
     return ip_address;
 }
 
-static void set_advertisement_data(const char *interface) {
+static int set_advertisement_data(const char *interface) {
     char* ip_address = get_ip_addr(interface);
     int byte1, byte2, byte3, byte4;
 
@@ -96,10 +97,10 @@ static void set_advertisement_data(const char *interface) {
         (uint8_t)byte1, (uint8_t)byte2, (uint8_t)byte3, (uint8_t)byte4
     };
 
-    send_command(0x08, 0x0008, 16, advertisement);
+    return send_command(0x08, 0x0008, 16, advertisement);
 }
 
-void configure_ble(const char *interface, uint8_t *ble_address) {
+int configure_ble(const char *interface, uint8_t *ble_address) {
     uint8_t configure_cmd[] = {
         0xa0, 0x00,
         0xa0, 0x00,
@@ -111,17 +112,17 @@ void configure_ble(const char *interface, uint8_t *ble_address) {
         0x00
     };
 
-    send_command(0x08, 0x0006, 15, configure_cmd);
+    if (send_command(0x08, 0x0006, 15, configure_cmd) != 0) return -1;
 
-    send_command(0x08, 0x0005, 6, ble_address);
+    if (send_command(0x08, 0x0005, 6, ble_address) != 0) return -1;
 
-    set_advertisement_data(interface);
+    return set_advertisement_data(interface);
 }
 
-void ble_advertise(bool on) {
+int ble_advertise(bool on) {
     uint8_t cmd[] = {
         on ? 1 : 0
     };
-    send_command(0x08, 0x000a, 1, cmd);
+    return send_command(0x08, 0x000a, 1, cmd);
 }
 

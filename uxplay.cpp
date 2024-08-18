@@ -2164,8 +2164,10 @@ int main (int argc, char *argv[]) {
 
     restart:
     if (ble_advertisement) {
-        configure_ble("eth0", ble_address);
-        ble_advertise(true);
+        if (configure_ble("eth0", ble_address) != 0 || ble_advertise(true) != 0) {
+            ble_advertisement = false;
+            LOGI("Failed to initialise BLE interface: Disabling until application restarts");
+        }
     }
     if (start_dnssd(server_hw_addr, server_name)) {
         goto cleanup;
