@@ -141,7 +141,8 @@ static std::vector <std::string> registered_keys;
 static double db_low = -30.0;
 static double db_high = 0.0;
 static bool taper_volume = false;
-static bool bluetooth_advertisement = false;
+static bool ble_advertisement = false;
+static uint8_t ble_address[6] = {0};
 
 /* logging */
 
@@ -1129,7 +1130,10 @@ static void parse_arguments (int argc, char *argv[]) {
             db_high = db2;
 	    printf("db range %f:%f\n", db_low, db_high);
         } else if (arg == "-btip") {
-            bluetooth_advertisement = true;
+            ble_advertisement = true;
+            ble_address[0] = rand() % 255; ble_address[1] = rand() % 255;
+            ble_address[2] = rand() % 255; ble_address[3] = rand() % 255;
+            ble_address[4] = rand() % 255; ble_address[5] = rand() % 255;
         } else {
             fprintf(stderr, "unknown option %s, stopping (for help use option \"-h\")\n",argv[i]);
             exit(1);
@@ -2159,8 +2163,8 @@ int main (int argc, char *argv[]) {
     }
 
     restart:
-    if (bluetooth_advertisement) {
-        configure_ble("eth0");
+    if (ble_advertisement) {
+        configure_ble("eth0", ble_address);
         ble_advertise(true);
     }
     if (start_dnssd(server_hw_addr, server_name)) {
@@ -2210,7 +2214,7 @@ int main (int argc, char *argv[]) {
         stop_dnssd();
     }
     cleanup:
-    if (bluetooth_advertisement) {
+    if (ble_advertisement) {
         ble_advertise(false);
     }
     if (use_audio) {

@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-void configure_ble(const char *interface);
+void configure_ble(const char *interface, uint8_t *ble_address);
 
 void ble_advertise(bool on);
 

@@ -84,7 +84,7 @@ static char* get_ip_addr(const char *interface) {
 }
 
 static void set_advertisement_data(const char *interface) {
-    char* ip_address = get_ip_addr("eth0");
+    char* ip_address = get_ip_addr(interface);
     int byte1, byte2, byte3, byte4;
 
     sscanf(ip_address, "%d.%d.%d.%d", &byte1, &byte2, &byte3, &byte4);
@@ -96,12 +96,10 @@ static void set_advertisement_data(const char *interface) {
         (uint8_t)byte1, (uint8_t)byte2, (uint8_t)byte3, (uint8_t)byte4
     };
 
-    printf("%d %d %d %d", byte1, byte2, byte3, byte4);
-
     send_command(0x08, 0x0008, 16, advertisement);
 }
 
-void configure_ble(const char *interface) {
+void configure_ble(const char *interface, uint8_t *ble_address) {
     uint8_t configure_cmd[] = {
         0xa0, 0x00,
         0xa0, 0x00,
@@ -114,6 +112,8 @@ void configure_ble(const char *interface) {
     };
 
     send_command(0x08, 0x0006, 15, configure_cmd);
+
+    send_command(0x08, 0x0005, 6, ble_address);
 
     set_advertisement_data(interface);
 }
