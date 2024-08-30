@@ -39,6 +39,12 @@ struct http_request_s {
     int datalen;
 
     int complete;
+    
+    unsigned char *decryption_key;
+    int decryption_key_len;
+
+    unsigned char *encryption_key;
+    int encryption_key_len;
 };
 
 static int
@@ -309,3 +315,33 @@ http_request_get_header_string(http_request_t *request, char **header_str)
     assert(p == &(str[len]));
     return len;
 }
+
+void
+http_request_begin_encryption(http_request_t *request, unsigned char * decryption_key, int decryption_key_len, unsigned char * encryption_key, int encryption_key_len) {
+    assert(request);
+
+    request->decryption_key = decryption_key;
+    request->decryption_key_len = decryption_key_len;
+    request->encryption_key = encryption_key;
+    request->encryption_key_len = encryption_key_len;
+}
+
+int
+http_request_get_encryption(http_request_t *request, unsigned char ** decryption_key, int *decryption_key_len, unsigned char ** encryption_key, int *encryption_key_len) {
+    assert(request);
+
+    if (request->decryption_key_len > 0) {
+        *decryption_key = request->decryption_key;
+        *decryption_key_len = request->decryption_key_len;
+        *encryption_key = request->encryption_key;
+        *encryption_key_len = request->encryption_key_len;
+        return 1;
+    }
+    return 0;
+}
+
+// int http_request_decrypt(http_request_t *request, char* decryption_key, ) {
+//     assert(request);
+
+
+// }

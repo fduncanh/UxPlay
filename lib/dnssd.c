@@ -377,6 +377,8 @@ dnssd_register_airplay(dnssd_t *dnssd, unsigned short port)
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "srcvers", strlen(AIRPLAY_SRCVERS), AIRPLAY_SRCVERS);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "vv", strlen(AIRPLAY_VV), AIRPLAY_VV);
 
+    return 0;
+
     /* Register the service */
     retval = dnssd->DNSServiceRegister(&dnssd->airplay_service, 0, 0,
                               dnssd->name, "_airplay._tcp",
@@ -394,6 +396,13 @@ dnssd_get_airplay_txt(dnssd_t *dnssd, int *length)
 {
     *length = dnssd->TXTRecordGetLength(&dnssd->airplay_record);
     return dnssd->TXTRecordGetBytesPtr(&dnssd->airplay_record);
+}
+
+const char *
+dnssd_get_raop_txt(dnssd_t *dnssd, int *length)
+{
+    *length = dnssd->TXTRecordGetLength(&dnssd->raop_record);
+    return dnssd->TXTRecordGetBytesPtr(&dnssd->raop_record);
 }
 
 const char *

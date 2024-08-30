@@ -16,6 +16,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -308,13 +309,13 @@ random_pin() {
 int
 srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_id, const char *pin,
              const char **salt, int *len_salt, const char **pk, int *len_pk) {
-    if (strlen(device_id) > SRP_USERNAME_SIZE) {
-        return -1;
-    }
+    // if (strlen(device_id) > SRP_USERNAME_SIZE) {
+    //     return -1;
+    // }
 
-    strncpy(session->username, device_id, SRP_USERNAME_SIZE);
+    strncpy(session->username, device_id, 10);
     
-    if (session->srp) {
+    if (session->srp) { 
         free (session->srp);
         session->srp = NULL;
     }
@@ -326,6 +327,9 @@ srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_
     get_random_bytes(session->srp->private_key, SRP_PRIVATE_KEY_SIZE);
     
     const unsigned char *srp_b = session->srp->private_key;
+    // const unsigned char b_bytes[] = { 0x36, 0xBF, 0x27, 0xC5, 0xD3, 0x38, 0xCA, 0x0A, 0xCA, 0xB0, 0x4E, 0x09, 0xEB, 0x8F, 0x3F, 0x7A, 0x8E, 0xCB, 0x6C, 0xB5, 0x84, 0x01, 0x34, 0xCF, 0x71, 0x4D, 0x2F, 0xB2, 0x61, 0xCF, 0xFA, 0x31 };
+    // const unsigned char *srp_b = b_bytes;
+    // memcpy(session->srp->private_key, b_bytes, 32);
     unsigned char * srp_B;
     unsigned char * srp_s;
     unsigned char * srp_v;
@@ -354,6 +358,10 @@ srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_
                                     (const unsigned char **) &srp_B, &len_B,
                                     NULL, NULL, 1);
 
+    // for (size_t i = 0; i < 384; i++) {
+    //     printf("%02X ", srp_B[i]);
+    // }
+
     *pk = (char *) srp_B;
     *len_pk = len_B;
 
@@ -362,7 +370,7 @@ srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_
 
 int
 srp_validate_proof(pairing_session_t *session, pairing_t *pairing, const unsigned char *A,
-                    int len_A, unsigned char *proof, int client_proof_len, int proof_len) {
+                    int len_A, unsigned char *proof, int client_proof_len, int proof_len, unsigned char * decryption_key, int * decryption_key_len, unsigned char * encryption_key, int * encryption_key_len) {
     int authenticated  = 0;
     const unsigned char *B =  NULL;
     const unsigned char *b = session->srp->private_key;
@@ -395,6 +403,11 @@ srp_validate_proof(pairing_session_t *session, pairing_t *pairing, const unsigne
     memcpy(session->srp->session_key, session_key, len_K);
     memcpy(proof, M2, proof_len);
     srp_verifier_delete(verifier);
+
+    hkdf_get_key(verifier, decryption_key, decryption_key_len, PAIR_CONTROL_WRITE);
+
+    hkdf_get_key(verifier, encryption_key, encryption_key_len, PAIR_CONTROL_READ);
+
     return 0;
 }
 int

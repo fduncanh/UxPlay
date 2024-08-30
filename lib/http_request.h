@@ -32,6 +32,8 @@ const char *http_request_get_protocol(http_request_t *request);
 const char *http_request_get_header(http_request_t *request, const char *name);
 const char *http_request_get_data(http_request_t *request, int *datalen);
 int http_request_get_header_string(http_request_t *request, char **header_str);
+void http_request_begin_encryption(http_request_t *request, unsigned char *decryption_key, int decryption_key_len, unsigned char *encryption_key, int encryption_key_len);
+int http_request_get_encryption(http_request_t *request, unsigned char **decryption_key, int *decryption_key_len, unsigned char **encryption_key, int *encryption_key_len);
 
 void http_request_destroy(http_request_t *request);
 

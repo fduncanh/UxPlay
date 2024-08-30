@@ -1379,11 +1379,11 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
     dnssd_set_airplay_features(dnssd, 30, 1); // RAOP support: with this bit set, the AirTunes service is not required. 
     dnssd_set_airplay_features(dnssd, 31, 0); // 
 
-    for (int i = 32; i < 64; i++) {
-        dnssd_set_airplay_features(dnssd, i, 0);
-    }
+    // for (int i = 32; i < 64; i++) {
+    //     dnssd_set_airplay_features(dnssd, i, 0);
+    // }
 
-    /*  bits 32-63 are  not used here: see  https://emanualcozzi.net/docs/airplay2/features 
+    /*  bits 32-63 are  not used here: see  https://emanualcozzi.net/docs/airplay2/features */
     dnssd_set_airplay_features(dnssd, 32, 0); // isCarPlay when ON,; Supports InitialVolume when OFF
     dnssd_set_airplay_features(dnssd, 33, 0); // Supports Air Play Video Play Queue
     dnssd_set_airplay_features(dnssd, 34, 0); // Supports Air Play from cloud (requires that bit 6 is ON)
@@ -1404,7 +1404,7 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
     dnssd_set_airplay_features(dnssd, 46, 0); // Supports HomeKit Pairing and Access Control
     dnssd_set_airplay_features(dnssd, 47, 0); //
 
-    dnssd_set_airplay_features(dnssd, 48, 0); // Supports CoreUtils Pairing and Encryption
+    dnssd_set_airplay_features(dnssd, 48, 1); // Supports CoreUtils Pairing and Encryption
     dnssd_set_airplay_features(dnssd, 49, 0); //
     dnssd_set_airplay_features(dnssd, 50, 0); // Metadata bit 3: "Now Playing" info sent by bplist not DAACP test
     dnssd_set_airplay_features(dnssd, 51, 0); // Supports Unified Pair Setup and MFi Authentication
@@ -1421,7 +1421,7 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
 
     dnssd_set_airplay_features(dnssd, 60, 0); // Supports Audo Media Data Control         
     dnssd_set_airplay_features(dnssd, 61, 0); // Supports RFC2198 redundancy
-    */
+    
 
     /* bit 27 of Features determines whether the AirPlay2 client-pairing protocol will be used (1) or not (0) */
     dnssd_set_airplay_features(dnssd, 27, (int) setup_legacy_pairing);
@@ -2166,11 +2166,12 @@ int main (int argc, char *argv[]) {
         stop_dnssd();
         goto cleanup;
     }
-    if (register_dnssd()) {
-        stop_raop_server();
-        stop_dnssd();
-        goto cleanup;
-    }
+    register_dnssd();
+    // if (register_dnssd()) {
+    //     stop_raop_server();
+    //     stop_dnssd();
+    //     goto cleanup;
+    // }
     reconnect:
     compression_type = 0;
     close_window = new_window_closing_behavior; 

@@ -163,3 +163,7 @@ if ( NOT APPLE )
     target_include_directories( airplay PRIVATE ${DNSSD_INCLUDE_DIR} )
   endif()
 endif()	
+
+pkg_check_modules(SODIUM REQUIRED libsodium)
+include_directories(${SODIUM_INCLUDE_DIRS})
+target_link_libraries(airplay ${SODIUM_LIBRARIES})

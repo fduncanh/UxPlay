@@ -177,17 +177,16 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
             if (httpd_nohold(conn->raop->httpd)) {
                 logger_log(conn->raop->logger, LOGGER_INFO, "\"nohold\" feature: switch to new connection request from %s", ipaddr);		  
                 if (conn->raop->callbacks.video_reset) {
-		  printf("**************************video_reset*************************\n");
+                    printf("**************************video_reset*************************\n");
                     conn->raop->callbacks.video_reset(conn->raop->callbacks.cls);
-		}
-		httpd_remove_known_connections(conn->raop->httpd);
-
+                }
+		        httpd_remove_known_connections(conn->raop->httpd);
             } else {
                 logger_log(conn->raop->logger, LOGGER_WARNING, "rejecting new connection request from %s", ipaddr);
                 *response = http_response_create();
                 http_response_init(*response, protocol, 409, "Conflict: Server is connected to another client");
                 goto finish;
-	    }
+	        }
         }      
         httpd_set_connection_type(conn->raop->httpd, ptr, CONNECTION_TYPE_RAOP);
         conn->connection_type = CONNECTION_TYPE_RAOP;
@@ -209,20 +208,20 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     }
 
     /* this rejects unsupported messages from _airplay._tcp for video streaming protocol*/
-    if (!cseq) {
-        return;
-    }
-    
+    // if (!cseq) {
+    //     return;
+    // }
+
     logger_log(conn->raop->logger, LOGGER_DEBUG, "\n%s %s %s", method, url, protocol);
     char *header_str= NULL; 
     http_request_get_header_string(request, &header_str);
     if (header_str) {
         logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", header_str);
-        bool data_is_plist = (strstr(header_str,"apple-binary-plist") != NULL);
-        bool data_is_text = (strstr(header_str,"text/") != NULL);
         free(header_str);
         int request_datalen;
         const char *request_data = http_request_get_data(request, &request_datalen);
+        bool data_is_plist = (strstr(header_str,"apple-binary-plist") != NULL && strstr(request_data, "bplist") != NULL); /* Server sometimes says binary-plist is the content when it's not */
+        bool data_is_text = (strstr(header_str,"text/") != NULL);
         if (request_data && logger_debug) {
             if (request_datalen > 0) {
 	        if (data_is_plist) {
@@ -255,7 +254,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
 
     logger_log(conn->raop->logger, LOGGER_DEBUG, "Handling request %s with URL %s", method, url);
     raop_handler_t handler = NULL;
-    if (!strcmp(method, "GET") && !strcmp(url, "/info")) {
+    if (!strcmp(method, "GET") && strstr(url, "/info") != NULL) {
         handler = &raop_handler_info;
     } else if (!strcmp(method, "POST") && !strcmp(url, "/pair-pin-start")) {
         handler = &raop_handler_pairpinstart;
@@ -292,7 +291,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     }
     finish:;
     http_response_add_header(*response, "Server", "AirTunes/"GLOBAL_VERSION);
-    http_response_add_header(*response, "CSeq", cseq);    
+    // http_response_add_header(*response, "CSeq", cseq);    
     http_response_finish(*response, response_data, response_datalen);
 
     int len;
