@@ -21,13 +21,14 @@
 #define PAIRING_SIG_SIZE (2 * X25519_KEY_SIZE)
 
 
-#define SRP_USERNAME_SIZE 24 /* accomodates up to an 8-octet MAC address */
-#define SRP_SESSION_KEY_SIZE 40
-#define SRP_VERIFIER_SIZE 256
+#define SRP_USERNAME "Pair-Setup"
+#define SRP_USERNAME_SIZE 10
+#define SRP_SESSION_KEY_SIZE 64
+#define SRP_VERIFIER_SIZE 384
 #define SRP_SALT_SIZE 16
-#define SRP_PK_SIZE 256
-#define SRP_SHA SRP_SHA1
-#define SRP_NG SRP_NG_2048
+#define SRP_PK_SIZE 384
+#define SRP_SHA SRP_SHA512
+#define SRP_NG SRP_NG_3072
 #define SRP_M2_SIZE 64
 #define SRP_PRIVATE_KEY_SIZE 32
 #define GCM_AUTHTAG_SIZE 16
@@ -57,7 +58,7 @@ int pairing_get_ecdh_secret_key(pairing_session_t *session, unsigned char ecdh_s
 int srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_id, const char *pin,
 		 const char **salt, int *len_salt, const char **pk, int *len_pk);
 int srp_validate_proof(pairing_session_t *session, pairing_t *pairing, const unsigned char *A,
-		       int len_A, unsigned char *proof, int client_proof_len, int proof_len);
+		       int len_A, unsigned char *proof, int client_proof_len, int proof_len, unsigned char * decryption_key, int * decryption_key_len, unsigned char * encryption_key, int * encryption_key_len);
 int srp_confirm_pair_setup(pairing_session_t *session, pairing_t *pairing, unsigned char *epk,
                            unsigned char *auth_tag);
 void access_client_session_data(pairing_session_t *session, char **username, char **client_pk, bool *setup);

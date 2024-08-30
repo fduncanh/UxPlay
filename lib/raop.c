@@ -170,11 +170,8 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     const char *protocol = http_request_get_protocol(request);
     const char *cseq = http_request_get_header(request, "CSeq");
 
-    printf("Test");
     if (conn->connection_type == CONNECTION_TYPE_UNKNOWN) {
-        printf("Test2");
         if (httpd_count_connection_type(conn->raop->httpd, CONNECTION_TYPE_RAOP)) {
-            printf("Test3");
             char ipaddr[40];
             utils_ipaddress_to_string(conn->remotelen, conn->remote, conn->zone_id, ipaddr, (int) (sizeof(ipaddr)));
             if (httpd_nohold(conn->raop->httpd)) {
@@ -214,17 +211,17 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     // if (!cseq) {
     //     return;
     // }
-    // printf("Test4");
+
     logger_log(conn->raop->logger, LOGGER_DEBUG, "\n%s %s %s", method, url, protocol);
     char *header_str= NULL; 
     http_request_get_header_string(request, &header_str);
     if (header_str) {
         logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", header_str);
-        bool data_is_plist = (strstr(header_str,"apple-binary-plist") != NULL);
-        bool data_is_text = (strstr(header_str,"text/") != NULL);
         free(header_str);
         int request_datalen;
         const char *request_data = http_request_get_data(request, &request_datalen);
+        bool data_is_plist = (strstr(header_str,"apple-binary-plist") != NULL && strstr(request_data, "bplist") != NULL); /* Server sometimes says binary-plist is the content when it's not */
+        bool data_is_text = (strstr(header_str,"text/") != NULL);
         if (request_data && logger_debug) {
             if (request_datalen > 0) {
 	        if (data_is_plist) {
@@ -259,7 +256,6 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     raop_handler_t handler = NULL;
     if (!strcmp(method, "GET") && strstr(url, "/info") != NULL) {
         handler = &raop_handler_info;
-        logger_log(conn->raop->logger, LOGGER_DEBUG, "Correct path taken!!!!!");
     } else if (!strcmp(method, "POST") && !strcmp(url, "/pair-pin-start")) {
         handler = &raop_handler_pairpinstart;
     } else if (!strcmp(method, "POST") && !strcmp(url, "/pair-setup-pin")) {

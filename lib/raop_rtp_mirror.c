@@ -383,7 +383,7 @@ raop_rtp_mirror_thread(void *arg)
                 }
 
                 unsigned char* payload_out;
-		unsigned char* payload_decrypted;
+		        unsigned char* payload_decrypted;
                 /*
                  * nal_types:1   Coded non-partitioned slice of a non-IDR picture
                  *           5   Coded non-partitioned slice of an IDR picture
@@ -415,7 +415,7 @@ raop_rtp_mirror_thread(void *arg)
                     payload_decrypted = payload_out + sps_pps_len;
                     memcpy(payload_out, sps_pps, sps_pps_len);
                     free (sps_pps);
-		    sps_pps = NULL;
+		        sps_pps = NULL;
                 } else {
                     payload_out = (unsigned char*)  malloc(payload_size);
                     payload_decrypted = payload_out;
@@ -464,7 +464,7 @@ raop_rtp_mirror_thread(void *arg)
                     case 5:   /*IDR, slice_layer_without_partitioning */
                     case 1:   /*non-IDR, slice_layer_without_partitioning */
                         break;
-	            case 2:   /* slice data partition A */
+	                case 2:   /* slice data partition A */
                     case 3:   /* slice data partition B */
                     case 4:   /* slice data partition C */
                         logger_log(raop_rtp_mirror->logger, LOGGER_INFO,

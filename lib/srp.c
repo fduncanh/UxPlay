@@ -40,6 +40,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <stdint.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
@@ -93,7 +94,6 @@ static struct NGHex global_Ng_constants[] = {
    "FBB694B5C803D89F7AE435DE236D525F54759B65E372FCD68EF20FA7111F9E4AFF73",
    "2"
  },
-#if 0 /* begin removed section 2 */
  { /* 3072 */
    "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B"
    "139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485"
@@ -108,6 +108,7 @@ static struct NGHex global_Ng_constants[] = {
    "D120A93AD2CAFFFFFFFFFFFFFFFF",
    "5"
  },
+#if 0 /* begin removed section 2 */
  { /* 4096 */
    "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E08"
    "8A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B"
@@ -205,6 +206,40 @@ static struct NGHex global_Ng_constants[] = {
  {0,0} /* null sentinel */
 };
 
+struct pair_keys_map
+{
+  uint8_t state;
+  const char *salt;
+  const char *info;
+  const char nonce[8];
+};
+
+static struct pair_keys_map pair_keys_map[] =
+{
+  // Used for /pair-setup
+  { 0x01, NULL, NULL, "" },
+  { 0x02, NULL, NULL, "" },
+  { 0x03, NULL, NULL, "" },
+  { 0x04, NULL, NULL, "" },
+  { 0x05, "Pair-Setup-Encrypt-Salt", "Pair-Setup-Encrypt-Info", "PS-Msg05" },
+  { 0x06, "Pair-Setup-Encrypt-Salt", "Pair-Setup-Encrypt-Info", "PS-Msg06" },
+  { 0, "Pair-Setup-Controller-Sign-Salt", "Pair-Setup-Controller-Sign-Info", "" },
+  { 0, "Pair-Setup-Accessory-Sign-Salt", "Pair-Setup-Accessory-Sign-Info", "" },
+
+  // Used for /pair-verify
+  { 0x01, NULL, NULL, "" },
+  { 0x02, "Pair-Verify-Encrypt-Salt", "Pair-Verify-Encrypt-Info", "PV-Msg02" },
+  { 0x03, "Pair-Verify-Encrypt-Salt", "Pair-Verify-Encrypt-Info", "PV-Msg03" },
+  { 0x04, NULL, NULL, "" },
+
+  // Encryption/decryption of control channel
+  { 0, "Control-Salt", "Control-Write-Encryption-Key", "" },
+  { 0, "Control-Salt", "Control-Read-Encryption-Key", "" },
+
+  // Encryption/decryption of event channel
+  { 0, "Events-Salt", "Events-Write-Encryption-Key", "" },
+  { 0, "Events-Salt", "Events-Read-Encryption-Key", "" },
+};
 
 static NGConstant * new_ng( SRP_NGType ng_type, const char * n_hex, const char * g_hex )
 {
@@ -295,7 +330,7 @@ static void handle_error(const char* location) {
     long error = ERR_get_error();
     const char* error_str = ERR_error_string(error, NULL);
     fprintf(stderr, "SRP error at %s: %s\n", location, error_str);
-    exit(EXIT_FAILURE);
+    // exit(EXIT_FAILURE);
 }
 
 static void hash_destroy( HashCTX_t *ctx) {
@@ -543,11 +578,11 @@ static void calculate_M( SRP_HashAlgorithm alg, NGConstant *ng, unsigned char * 
     update_hash_n( alg, ctx, s );
     update_hash_n( alg, ctx, A );
     update_hash_n( alg, ctx, B );
-#ifdef APPLE_VARIANT  /* Apple's SRP session key length  is 2 x hash_len */
-    hash_update( alg, ctx, K, 2 * hash_len );
-#else
+// #ifdef APPLE_VARIANT  /* Apple's SRP session key length  is 2 x hash_len */
+//     hash_update( alg, ctx, K, 2 * hash_len );
+// #else
     hash_update( alg, ctx, K, hash_len );
-#endif
+// #endif
     hash_final( alg, ctx, dest, &dest_len );
     hash_destroy ( ctx);
     
@@ -562,11 +597,11 @@ static void calculate_H_AMK( SRP_HashAlgorithm alg, unsigned char *dest, const B
     hash_init( alg, ctx);
     update_hash_n( alg, ctx, A );
     hash_update( alg, ctx, M, hash_length(alg) );
-#ifdef APPLE_VARIANT
-    hash_update( alg, ctx, K, 2 * hash_length(alg) );
-#else
+// #ifdef APPLE_VARIANT
+//     hash_update( alg, ctx, K, 2 * hash_length(alg) );
+// #else
     hash_update( alg, ctx, K, hash_length(alg) );
-#endif
+// #endif
     hash_final( alg, ctx, dest, &dest_len );
     hash_destroy ( ctx);
 }
@@ -639,8 +674,10 @@ void srp_create_salted_verification_key( SRP_HashAlgorithm alg,
 
 #ifdef APPLE_VARIANT  //use a 16 byte salt
     BN_rand(s, 128, -1, 0);
+    // unsigned char salt[] = { 0x10, 0x24, 0x36, 0x7E, 0x07, 0xF4, 0xB4, 0xBC, 0xB1, 0x4A, 0x17, 0x6D, 0x80, 0xA5, 0xC7, 0x59 };
+    // s = BN_bin2bn(salt, 16, NULL);
 #else
-    BN_rand(s, 32, -1, 0);
+    // BN_rand(s, 32, -1, 0);
 #endif    
     x = calculate_x( alg, s, username, password, len_password );
 
@@ -845,21 +882,34 @@ struct SRPVerifier *  srp_verifier_new( SRP_HashAlgorithm alg, SRP_NGType ng_typ
           goto cleanup_and_exit;
        }
 
-       /* S = (A *(v^u)) ^ b */
-       BN_mod_exp(tmp1, v, u, ng->N, ctx);
-       BN_mul(tmp2, A, tmp1, ctx);
-       BN_mod_exp(S, tmp2, b, ng->N, ctx);
+        /* S = (A *(v^u)) ^ b */
+        BN_mod_exp(tmp1, v, u, ng->N, ctx);
+        BN_mul(tmp2, A, tmp1, ctx);
+        BN_mod_exp(S, tmp2, b, ng->N, ctx);
 
-#ifdef APPLE_VARIANT
-       hash_session_key(alg, S, ver->session_key);
-#else
-       hash_num(alg, S, ver->session_key);
-#endif
-       calculate_M( alg, ng, ver->M, username, s, A, B, ver->session_key );
-       calculate_H_AMK( alg, ver->H_AMK, A, ver->M, ver->session_key );
+        const unsigned char *bytes_S;
+        int len_S   = BN_num_bytes(S);
+        bytes_S = (const unsigned char *)malloc( len_S );
+        BN_bn2bin(S,  (unsigned char *) bytes_S);
 
-       *len_B   = BN_num_bytes(B);
-       *bytes_B = (const unsigned char *)malloc( *len_B );
+
+
+// #ifdef APPLE_VARIANT
+//         hash_session_key(alg, S, ver->session_key);
+// #else
+        hash_num(alg, S, ver->session_key);
+// #endif
+        calculate_M( alg, ng, ver->M, username, s, A, B, ver->session_key );
+        calculate_H_AMK( alg, ver->H_AMK, A, ver->M, ver->session_key );
+
+        // printf("M (%d): ", 64);
+        // for (int i = 0; i < 64; i++) {
+        //     printf("%02X ", ver->M[i]);
+        // }
+        // printf("\n\n\n");
+
+        *len_B   = BN_num_bytes(B);
+        *bytes_B = (const unsigned char *)malloc( *len_B );
 
        if( !((const unsigned char *)*bytes_B) )
        {
@@ -919,21 +969,21 @@ const char * srp_verifier_get_username( struct SRPVerifier * ver )
 const unsigned char * srp_verifier_get_session_key( struct SRPVerifier * ver, int * key_length )
 {
     if (key_length)
-#ifdef APPLE_VARIANT
-      *key_length = 2 * hash_length( ver->hash_alg );
-#else
+// #ifdef APPLE_VARIANT
+//       *key_length = 2 * hash_length( ver->hash_alg );
+// #else
       *key_length = hash_length( ver->hash_alg );
-#endif
+// #endif
     return ver->session_key;
 }
 
 int srp_verifier_get_session_key_length( struct SRPVerifier * ver )
 {
-#ifdef APPLE_VARIANT
-    return 2 * hash_length( ver->hash_alg );
-#else
+// #ifdef APPLE_VARIANT
+//     return 2 * hash_length( ver->hash_alg );
+// #else
     return hash_length( ver->hash_alg );
-#endif
+// #endif
 }
 
 /* user_M must be exactly SHA512_DIGEST_LENGTH bytes in size */
@@ -946,6 +996,187 @@ void srp_verifier_verify_session( struct SRPVerifier * ver, const unsigned char 
     }
     else
         *bytes_HAMK = NULL;
+}
+
+/* Executes SHA512 RFC 5869 extract + expand, writing a derived key to okm
+
+   hkdfExtract(SHA512, salt, salt_len, ikm, ikm_len, prk);
+   hkdfExpand(SHA512, prk, SHA512_LEN, info, info_len, okm, okm_len);
+*/
+static int
+hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm_len, enum pair_keys pair_key)
+{
+// #ifdef CONFIG_OPENSSL
+#include <openssl/kdf.h>
+  EVP_PKEY_CTX *pctx;
+
+  if (okm_len > SHA512_DIGEST_LENGTH)
+    return -1;
+  if (! (pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL)))
+    return -1;
+  if (EVP_PKEY_derive_init(pctx) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha512()) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, (const unsigned char *)pair_keys_map[pair_key].salt, strlen(pair_keys_map[pair_key].salt)) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_set1_hkdf_key(pctx, ikm, ikm_len) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_add1_hkdf_info(pctx, (const unsigned char *)pair_keys_map[pair_key].info, strlen(pair_keys_map[pair_key].info)) <= 0)
+    goto error;
+  if (EVP_PKEY_derive(pctx, okm, &okm_len) <= 0)
+    goto error;
+
+  EVP_PKEY_CTX_free(pctx);
+  return 0;
+
+ error:
+  EVP_PKEY_CTX_free(pctx);
+  return -1;
+// #else
+//   return -1;
+// #endif
+}
+
+int hkdf_get_key(struct SRPVerifier * ver, unsigned char * derived_key, int * derived_key_len, enum pair_keys msg_state) {
+    int session_key_len;
+    int ret;
+
+    const unsigned char * session_key = srp_verifier_get_session_key(ver, &session_key_len);
+    if (!session_key) {
+        printf("Could not get session key");//
+        return -1;
+    }
+    ret = hkdf_extract_expand(derived_key, *derived_key_len, session_key, session_key_len, msg_state);
+    if (ret < 0) {
+        printf("%d", ret);
+        printf("hkdf derived key error");
+        return -2;
+    }
+
+    printf("%02X ", *derived_key);
+    printf("%02X ", derived_key[1]);
+    printf("%02X ", derived_key[2]);
+    printf("%02X ", derived_key[3]);
+
+    return 0;
+}
+
+int
+decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, const uint8_t *key, uint8_t key_len, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len, const uint8_t nonce[NONCE_LENGTH])
+{
+  EVP_CIPHER_CTX *ctx;
+  int len;
+
+  const unsigned char * aad = ad;
+
+  printf("DECRYPTION INFO:");
+
+  printf("\n\nCipher: (%d)\n", cipher_len);
+  for (int i = 0; i < cipher_len; i++) {
+    printf("%02X ", cipher[i]);
+  }
+
+  printf("\n\nDecryption key (%d)\n", key_len);
+  for (int i = 0; i < key_len; i++) {
+    printf("%02X ", key[i]);
+  }
+
+  printf("\n\nAD (%d)\n", ad_len);
+  for (int i = 0; i < ad_len; i++) {
+    printf("%02X ", aad[i]);
+  }
+
+  printf("\n\nTag (%d)\n", tag_len);
+  for (int i = 0; i < tag_len; i++) {
+    printf("%02X ", tag[i]);
+  }
+
+  printf("\n\nNonce\n");
+  for (int i = 0; i < NONCE_LENGTH; i++) {
+    printf("%02X ", nonce[i]);
+  } 
+  
+  
+
+  if (! (ctx = EVP_CIPHER_CTX_new())) {
+    printf("here 1");
+    return -1;
+  }
+
+  if (EVP_DecryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, key, nonce) != 1) {
+    printf("here 2");
+    goto error;
+  }
+
+  if (EVP_CIPHER_CTX_set_padding(ctx, 0) != 1) // Maybe not necessary
+    goto error;
+
+  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, tag) != 1)
+    goto error;
+
+  if (ad_len > 0 && EVP_DecryptUpdate(ctx, NULL, &len, ad, ad_len) != 1) {
+    printf("here 5");
+    goto error;
+  }
+
+  if (EVP_DecryptUpdate(ctx, plain, &len, cipher, cipher_len) != 1) {
+    printf("here 6");
+    goto error;
+  }
+
+  if (EVP_DecryptFinal_ex(ctx, NULL, &len) != 1) {
+    printf("here 7: (%d)", len);
+    goto error;
+  }
+
+  EVP_CIPHER_CTX_free(ctx);
+  return 0;
+
+ error:
+  EVP_CIPHER_CTX_free(ctx);
+  return -1;
+}
+
+int
+encrypt_chacha(uint8_t *cipher, const uint8_t *plain, size_t plain_len, const uint8_t *key, size_t key_len, const void *ad, size_t ad_len, uint8_t *tag, size_t tag_len, const uint8_t nonce[NONCE_LENGTH])
+{
+  EVP_CIPHER_CTX *ctx;
+  int len;
+
+  if (! (ctx = EVP_CIPHER_CTX_new()))
+    return -1;
+
+  if (EVP_EncryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, key, nonce) != 1)
+    goto error;
+
+  if (EVP_CIPHER_CTX_set_padding(ctx, 0) != 1) // Maybe not necessary
+    goto error;
+
+  if (ad_len > 0 && EVP_EncryptUpdate(ctx, NULL, &len, ad, ad_len) != 1)
+    goto error;
+
+  if (EVP_EncryptUpdate(ctx, cipher, &len, plain, plain_len) != 1)
+    goto error;
+
+  assert(len == plain_len);
+
+  if (EVP_EncryptFinal_ex(ctx, NULL, &len) != 1)
+    goto error;
+
+  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag_len, tag) != 1)
+    goto error;
+
+  EVP_CIPHER_CTX_free(ctx);
+  return 0;
+
+ error:
+  EVP_CIPHER_CTX_free(ctx);
+  return -1;
+}
+
+void get_error() {
+  handle_error("Here");
 }
 
 /*******************************************************************************/
