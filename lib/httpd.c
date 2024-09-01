@@ -26,7 +26,7 @@
 #include "http_request.h"
 #include "compat.h"
 #include "logger.h"
-#include "srp.h"
+#include "crypto.h"
 
 struct http_connection_s {
     int connected;
@@ -36,14 +36,7 @@ struct http_connection_s {
     connection_type_t type;
     http_request_t *request;
 
-    unsigned char *decryption_key;
-    int decryption_key_len;
-
-    unsigned char *encryption_key;
-    int encryption_key_len;
-
-    int decryption_counter;
-    int encryption_counter;
+    chacha_ctx_t *chacha_ctx;
 };
 typedef struct http_connection_s http_connection_t;
 
@@ -357,11 +350,9 @@ httpd_thread(void *arg)
                 continue;
             }
 
-            if (connection->decryption_key_len > 0) {
+            if (connection->chacha_ctx) {
                 unsigned char * buf = buffer;
-                // uint16_t block_len = (uint16_t)((unsigned char)buffer[1] << 8 | (unsigned char)buffer[0]);
                 uint16_t block_len = ret - 18;
-                printf("%d", block_len);
                 int expected_payload_len = 2 + block_len + 16;
                 if (ret < expected_payload_len) {
                     logger_log(httpd->logger, LOGGER_INFO, "Incomplete payload, waiting for more data");
@@ -370,22 +361,17 @@ httpd_thread(void *arg)
                     logger_log(httpd->logger, LOGGER_INFO, "Received multiple packets");
                 }
                 int encrypted_len = block_len;
-                unsigned char nonce[NONCE_LENGTH] = { 0 };
                 unsigned char tag[16];
-                uint64_t counter = connection->decryption_counter; // re-write this so it's not assigning another local variable
                 memcpy(tag, buf + block_len + 2, 16);
                 unsigned char * result = malloc(encrypted_len);
                 uint16_t header;
                 memcpy(&header, buf, 2);
-                // nonce[4] = counter & 0xFF;
-                memcpy(nonce + 4, &counter, NONCE_LENGTH - 4); 
 
-                if (decrypt_chacha(result, buf + 2, block_len, connection->decryption_key, connection->decryption_key_len, buf, 2, tag, 16, nonce) != 0) {
+                if (decrypt_chacha(result, buf + 2, block_len, connection->chacha_ctx, buf, 2, tag, 16) != 0) {
                     logger_log(httpd->logger, LOGGER_ERR, "failed to decrypt packet");
                 }
                 memcpy(buffer, result, encrypted_len);
                 ret = encrypted_len;
-                connection->decryption_counter++;
             } 
 
             /* Parse HTTP request from data read from connection */
@@ -408,17 +394,10 @@ httpd_thread(void *arg)
 			       "method = %s, url = %s, protocol = %s", connection->socket_fd, i, method, url, protocol);
                 }
                 httpd->callbacks.conn_request(connection->user_data, connection->request, &response);
-                unsigned char *decryption_key;
-                int decryption_key_len = 0;
-                unsigned char *encryption_key;
-                int encryption_key_len = 0;
-                if (http_request_get_encryption(connection->request, &decryption_key, &decryption_key_len, &encryption_key, &encryption_key_len)) {
-                    connection->decryption_key = decryption_key;
-                    connection->decryption_key_len = decryption_key_len;
-                    connection->encryption_key = encryption_key;
-                    connection->encryption_key_len = encryption_key_len;
-                    connection->encryption_counter = 0;
-                    connection->decryption_counter = 0;
+                
+                chacha_ctx_t *chacha_ctx = NULL;
+                if (http_request_get_encryption(connection->request, &chacha_ctx)) {
+                    connection->chacha_ctx = chacha_ctx;
                 }
 
                 http_request_destroy(connection->request);
@@ -433,22 +412,16 @@ httpd_thread(void *arg)
                     /* Get response data and datalen */
                     data = http_response_get_data(response, &datalen);
 
-                    if (connection->encryption_key_len > 0 && encryption_key_len == 0) { // .!decryption_key to make sure that the state did not change this frame (if it did then this frame would be accidentally encrypted)
+                    if (connection->chacha_ctx && !chacha_ctx) { // Check that encryption is valid, but that it was not set up on this frame (as this frame shouldn't be encrypted as it will be the final /pair-setup)
                         unsigned char auth_tag[16];
-                        unsigned char nonce[NONCE_LENGTH];
                         int total_packet_len = 2 + datalen + 16;
-                        // uint16_t payload_len = htons(datalen);
                         unsigned char * encrypted = malloc(total_packet_len); // 2 bytes for payload size; datalen = payload; 16 bytes for authTag
                         memcpy(encrypted, &datalen, 2);
 
-                        uint64_t counter = connection->encryption_counter;
-                        memcpy(nonce + 4, &counter, NONCE_LENGTH - 4);
-                        
-                        encrypt_chacha(encrypted + 2, data, datalen, connection->encryption_key, connection->encryption_key_len, encrypted, 2, auth_tag, 16, nonce);
+                        encrypt_chacha(encrypted + 2, data, datalen, connection->chacha_ctx, encrypted, 2, auth_tag, 16);
                         memcpy(encrypted + 2 + datalen, auth_tag, 16);
                         data = encrypted;
                         datalen = total_packet_len;
-                        connection->encryption_counter++;
                     }
 
                     written = 0;

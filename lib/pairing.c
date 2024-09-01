@@ -228,6 +228,11 @@ pairing_session_get_signature(pairing_session_t *session, unsigned char signatur
 }
 
 int
+pairing_session_get_session_key(pairing_session_t *session, unsigned char ** session_key) {
+    *session_key = session->srp->session_key;
+}
+
+int
 pairing_session_finish(pairing_session_t *session, const unsigned char signature[PAIRING_SIG_SIZE])
 {
     unsigned char sig_buffer[PAIRING_SIG_SIZE];
@@ -370,7 +375,7 @@ srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_
 
 int
 srp_validate_proof(pairing_session_t *session, pairing_t *pairing, const unsigned char *A,
-                    int len_A, unsigned char *proof, int client_proof_len, int proof_len, unsigned char * decryption_key, int * decryption_key_len, unsigned char * encryption_key, int * encryption_key_len) {
+                    int len_A, unsigned char *proof, int client_proof_len, int proof_len) {
     int authenticated  = 0;
     const unsigned char *B =  NULL;
     const unsigned char *b = session->srp->private_key;
@@ -404,12 +409,31 @@ srp_validate_proof(pairing_session_t *session, pairing_t *pairing, const unsigne
     memcpy(proof, M2, proof_len);
     srp_verifier_delete(verifier);
 
-    hkdf_get_key(verifier, decryption_key, decryption_key_len, PAIR_CONTROL_WRITE);
+// { 0, "Control-Salt", "Control-Write-Encryption-Key", "" },
+// { 0, "Control-Salt", "Control-Read-Encryption-Key", "" },
 
-    hkdf_get_key(verifier, encryption_key, encryption_key_len, PAIR_CONTROL_READ);
+    // hkdf_get_key(session_key, len_K, decryption_key, decryption_key_len, "Control-Salt", "Control-Write-Encryption-Key");
+
+    // hkdf_get_key(session_key, len_K, encryption_key, encryption_key_len, "Control-Salt", "Control-Read-Encryption-Key");
 
     return 0;
 }
+
+// int test_get_stream_key(pairing_session_t *session, uint64_t streamConnectionID) {
+//     unsigned char streamKey[32];
+//     int streamKeyLen = 32;
+// 	char streamKeySalt[16 + 20]; // Needs to be large enough to hold "DataStream-Salt" + streamConnectionID as a str
+//     int ret = snprintf( streamKeySalt, sizeof(streamKeySalt), "%s%llu", "DataStream-Salt", streamConnectionID );
+//     hkdf_get_key(session->srp->session_key, sizeof(session->srp->session_key), streamKey, &streamKeyLen, streamKeySalt, "DataStream-Output-Encryption-Key");
+
+//     printf("Stream Key:\n\n");
+//     for (int i = 0; i < streamKeyLen; i++) {
+//         printf("%02X ", streamKey[i]);
+//     }
+
+//     printf("\n\n\n");
+// }
+
 int
 srp_confirm_pair_setup(pairing_session_t *session, pairing_t *pairing,
                        unsigned char *epk, unsigned char *auth_tag) {
@@ -459,6 +483,11 @@ srp_confirm_pair_setup(pairing_session_t *session, pairing_t *pairing,
     epk_len = gcm_encrypt(pk, ED25519_KEY_SIZE, epk, aesKey, aesIV, auth_tag);
     return epk_len;    
 }
+
+// int
+// raop_mirroring_get_key(pairing_session_t *session, uint64_t streamConnectionID, unsigned char * inKey, int * in_key_len) {
+//     hkdf_get_key(session->srp->verifier, in_key, in_key_len);)
+// }
 
 void access_client_session_data(pairing_session_t *session, char **username, char **client_pk64, bool *setup) {
     int len64 = 4 * (1 + (ED25519_KEY_SIZE / 3)) + 1;

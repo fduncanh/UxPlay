@@ -63,8 +63,6 @@
 
 #include <stdint.h>
 
-#define NONCE_LENGTH 12 // 96 bits according to chacha poly1305
-
 struct SRPVerifier;
 #if 0  /*begin removed section 1*/
 struct SRPUser;
@@ -215,11 +213,11 @@ enum pair_keys
   PAIR_EVENTS_READ,
 };
 
-int hkdf_get_key(struct SRPVerifier * ver, unsigned char * derived_key, int * derived_key_len, enum pair_keys msg_state);
+// int hkdf_get_key(unsigned char * session_key, int session_key_len, unsigned char * derived_key, int * derived_key_len, char * salt, char * info);
 
-int decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, const uint8_t *key, uint8_t key_len, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len, const uint8_t nonce[NONCE_LENGTH]);
+// int decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, const uint8_t *key, uint8_t key_len, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len, const uint8_t nonce[NONCE_LENGTH]);
 
-int encrypt_chacha(uint8_t *cipher, const uint8_t *plain, size_t plain_len, const uint8_t *key, size_t key_len, const void *ad, size_t ad_len, uint8_t *tag, size_t tag_len, const uint8_t nonce[NONCE_LENGTH]);
+// int encrypt_chacha(uint8_t *cipher, const uint8_t *plain, size_t plain_len, const uint8_t *key, size_t key_len, const void *ad, size_t ad_len, uint8_t *tag, size_t tag_len, const uint8_t nonce[NONCE_LENGTH]);
 
 void get_error();
 /*******************************************************************************/

@@ -31,6 +31,7 @@
 struct mirror_buffer_s {
     logger_t *logger;
     aes_ctx_t *aes_ctx;
+    chacha_ctx_t *chacha_ctx;
     int nextDecryptCount;
     uint8_t og[16];
     /* audio aes key is used in a hash for the video aes key and iv */
@@ -67,6 +68,19 @@ mirror_buffer_init_aes(mirror_buffer_t *mirror_buffer, const uint64_t *streamCon
     mirror_buffer->aes_ctx = aes_ctr_init(aeskey_video, aesiv_video);
 }
 
+void
+mirror_buffer_init_chacha(mirror_buffer_t *mirror_buffer, unsigned char *session_key, const uint64_t *streamConnectionID) 
+{
+    unsigned char stream_key[32];
+    int stream_key_len = 32;
+	char stream_key_salt[16 + 20]; // Needs to be large enough to hold "DataStream-Salt" + streamConnectionID as a str
+    int ret = snprintf( stream_key_salt, sizeof(stream_key_salt), "%s%llu", "DataStream-Salt", *streamConnectionID );
+
+    mirror_buffer->chacha_ctx = malloc(sizeof(chacha_ctx_t));
+
+    chacha_setup_keys(mirror_buffer->chacha_ctx, session_key, stream_key_salt, "DataStream-Output-Encryption-Key", NULL, NULL);
+}
+
 mirror_buffer_t *
 mirror_buffer_init(logger_t *logger, const unsigned char *aeskey)
 {
@@ -82,35 +96,45 @@ mirror_buffer_init(logger_t *logger, const unsigned char *aeskey)
     return mirror_buffer;
 }
 
-void mirror_buffer_decrypt(mirror_buffer_t *mirror_buffer, unsigned char* input, unsigned char* output, int inputLen) {
+void mirror_buffer_decrypt(mirror_buffer_t *mirror_buffer, unsigned char packet_header[128], unsigned char* input, unsigned char* output, int *input_len) {
+    int inputLen = *input_len;
     // Start decrypting
-    if (mirror_buffer->nextDecryptCount > 0) {//mirror_buffer->nextDecryptCount = 10
-        for (int i = 0; i < mirror_buffer->nextDecryptCount; i++) {
-            output[i] = (input[i] ^ mirror_buffer->og[(16 - mirror_buffer->nextDecryptCount) + i]);
+    if (!mirror_buffer->chacha_ctx) {
+        if (mirror_buffer->nextDecryptCount > 0) {//mirror_buffer->nextDecryptCount = 10
+            for (int i = 0; i < mirror_buffer->nextDecryptCount; i++) {
+                output[i] = (input[i] ^ mirror_buffer->og[(16 - mirror_buffer->nextDecryptCount) + i]);
+            }
+        }
+        // Handling encrypted bytes
+        int encryptlen = ((inputLen - mirror_buffer->nextDecryptCount) / 16) * 16;
+        // Aes decryption
+        aes_ctr_start_fresh_block(mirror_buffer->aes_ctx);
+        aes_ctr_decrypt(mirror_buffer->aes_ctx, input + mirror_buffer->nextDecryptCount,
+                        input + mirror_buffer->nextDecryptCount, encryptlen);
+        // Copy to output
+        memcpy(output + mirror_buffer->nextDecryptCount, input + mirror_buffer->nextDecryptCount, encryptlen);
+        // int outputlength = mirror_buffer->nextDecryptCount + encryptlen;
+        // Processing remaining length
+        int restlen = (inputLen - mirror_buffer->nextDecryptCount) % 16;
+        int reststart = inputLen - restlen;
+        mirror_buffer->nextDecryptCount = 0;
+        if (restlen > 0) {
+            memset(mirror_buffer->og, 0, 16);
+            memcpy(mirror_buffer->og, input + reststart, restlen);
+            aes_ctr_decrypt(mirror_buffer->aes_ctx, mirror_buffer->og, mirror_buffer->og, 16);
+            for (int j = 0; j < restlen; j++) {
+                output[reststart + j] = mirror_buffer->og[j];
+            }
+            //outputlength += restlen;
+            mirror_buffer->nextDecryptCount = 16 - restlen;// Difference 16-6=10 bytes
         }
     }
-    // Handling encrypted bytes
-    int encryptlen = ((inputLen - mirror_buffer->nextDecryptCount) / 16) * 16;
-    // Aes decryption
-    aes_ctr_start_fresh_block(mirror_buffer->aes_ctx);
-    aes_ctr_decrypt(mirror_buffer->aes_ctx, input + mirror_buffer->nextDecryptCount,
-                    input + mirror_buffer->nextDecryptCount, encryptlen);
-    // Copy to output
-    memcpy(output + mirror_buffer->nextDecryptCount, input + mirror_buffer->nextDecryptCount, encryptlen);
-    // int outputlength = mirror_buffer->nextDecryptCount + encryptlen;
-    // Processing remaining length
-    int restlen = (inputLen - mirror_buffer->nextDecryptCount) % 16;
-    int reststart = inputLen - restlen;
-    mirror_buffer->nextDecryptCount = 0;
-    if (restlen > 0) {
-        memset(mirror_buffer->og, 0, 16);
-        memcpy(mirror_buffer->og, input + reststart, restlen);
-        aes_ctr_decrypt(mirror_buffer->aes_ctx, mirror_buffer->og, mirror_buffer->og, 16);
-        for (int j = 0; j < restlen; j++) {
-            output[reststart + j] = mirror_buffer->og[j];
+    else {
+        if (decrypt_chacha(output, input, inputLen - 16, mirror_buffer->chacha_ctx, packet_header, 128, input + inputLen - 16, 16)) {
+            printf("ERROR: Failed to decrypt packet");
         }
-        //outputlength += restlen;
-        mirror_buffer->nextDecryptCount = 16 - restlen;// Difference 16-6=10 bytes
+
+        *input_len -= 16;
     }
 }
 

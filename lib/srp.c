@@ -1004,7 +1004,7 @@ void srp_verifier_verify_session( struct SRPVerifier * ver, const unsigned char 
    hkdfExpand(SHA512, prk, SHA512_LEN, info, info_len, okm, okm_len);
 */
 static int
-hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm_len, enum pair_keys pair_key)
+hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm_len, char * salt, char * info)
 {
 // #ifdef CONFIG_OPENSSL
 #include <openssl/kdf.h>
@@ -1018,11 +1018,11 @@ hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm
     goto error;
   if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha512()) <= 0)
     goto error;
-  if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, (const unsigned char *)pair_keys_map[pair_key].salt, strlen(pair_keys_map[pair_key].salt)) <= 0)
+  if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, (const unsigned char *)salt, strlen(salt)) <= 0)
     goto error;
   if (EVP_PKEY_CTX_set1_hkdf_key(pctx, ikm, ikm_len) <= 0)
     goto error;
-  if (EVP_PKEY_CTX_add1_hkdf_info(pctx, (const unsigned char *)pair_keys_map[pair_key].info, strlen(pair_keys_map[pair_key].info)) <= 0)
+  if (EVP_PKEY_CTX_add1_hkdf_info(pctx, (const unsigned char *)info, strlen(info)) <= 0)
     goto error;
   if (EVP_PKEY_derive(pctx, okm, &okm_len) <= 0)
     goto error;
@@ -1038,142 +1038,107 @@ hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm
 // #endif
 }
 
-int hkdf_get_key(struct SRPVerifier * ver, unsigned char * derived_key, int * derived_key_len, enum pair_keys msg_state) {
-    int session_key_len;
-    int ret;
+// int hkdf_get_key(unsigned char * session_key, int session_key_len, unsigned char * derived_key, int * derived_key_len, char * salt, char * info) {
+//     int ret;
 
-    const unsigned char * session_key = srp_verifier_get_session_key(ver, &session_key_len);
-    if (!session_key) {
-        printf("Could not get session key");//
-        return -1;
-    }
-    ret = hkdf_extract_expand(derived_key, *derived_key_len, session_key, session_key_len, msg_state);
-    if (ret < 0) {
-        printf("%d", ret);
-        printf("hkdf derived key error");
-        return -2;
-    }
+//     // const unsigned char * session_key = srp_verifier_get_session_key(ver, &session_key_len);
+//     // if (!session_key) {
+//     //     printf("Could not get session key");//
+//     //     return -1;
+//     // }
+//     ret = hkdf_extract_expand(derived_key, *derived_key_len, session_key, session_key_len, salt, info);
+//     if (ret < 0) {
+//         printf("%d", ret);
+//         printf("hkdf derived key error");
+//         return -2;
+//     }
 
-    printf("%02X ", *derived_key);
-    printf("%02X ", derived_key[1]);
-    printf("%02X ", derived_key[2]);
-    printf("%02X ", derived_key[3]);
+//     // printf("Session Key Dump:\n\n");
+//     // for (int i = 0; i < session_key_len; i++) {
+//     //   printf("%02X ", session_key[i]);
+//     // }
 
-    return 0;
-}
+//     // printf("\n\n\n");
 
-int
-decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, const uint8_t *key, uint8_t key_len, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len, const uint8_t nonce[NONCE_LENGTH])
-{
-  EVP_CIPHER_CTX *ctx;
-  int len;
+//     return 0;
+// }
 
-  const unsigned char * aad = ad;
+// int
+// decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, const uint8_t *key, uint8_t key_len, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len, const uint8_t nonce[NONCE_LENGTH])
+// {
+//   EVP_CIPHER_CTX *ctx;
+//   int len;
 
-  printf("DECRYPTION INFO:");
+//   const unsigned char * aad = ad;
 
-  printf("\n\nCipher: (%d)\n", cipher_len);
-  for (int i = 0; i < cipher_len; i++) {
-    printf("%02X ", cipher[i]);
-  }
+//   printf("DECRYPTION INFO:");
 
-  printf("\n\nDecryption key (%d)\n", key_len);
-  for (int i = 0; i < key_len; i++) {
-    printf("%02X ", key[i]);
-  }
+//   printf("\n\nCipher: (%d)\n", cipher_len);
+//   for (int i = 0; i < cipher_len; i++) {
+//     printf("%02X ", cipher[i]);
+//   }
 
-  printf("\n\nAD (%d)\n", ad_len);
-  for (int i = 0; i < ad_len; i++) {
-    printf("%02X ", aad[i]);
-  }
+//   printf("\n\nDecryption key (%d)\n", key_len);
+//   for (int i = 0; i < key_len; i++) {
+//     printf("%02X ", key[i]);
+//   }
 
-  printf("\n\nTag (%d)\n", tag_len);
-  for (int i = 0; i < tag_len; i++) {
-    printf("%02X ", tag[i]);
-  }
+//   printf("\n\nAD (%d)\n", ad_len);
+//   for (int i = 0; i < ad_len; i++) {
+//     printf("%02X ", aad[i]);
+//   }
 
-  printf("\n\nNonce\n");
-  for (int i = 0; i < NONCE_LENGTH; i++) {
-    printf("%02X ", nonce[i]);
-  } 
+//   printf("\n\nTag (%d)\n", tag_len);
+//   for (int i = 0; i < tag_len; i++) {
+//     printf("%02X ", tag[i]);
+//   }
+
+//   printf("\n\nNonce\n");
+//   for (int i = 0; i < NONCE_LENGTH; i++) {
+//     printf("%02X ", nonce[i]);
+//   } 
   
   
 
-  if (! (ctx = EVP_CIPHER_CTX_new())) {
-    printf("here 1");
-    return -1;
-  }
+//   if (! (ctx = EVP_CIPHER_CTX_new())) {
+//     printf("here 1");
+//     return -1;
+//   }
 
-  if (EVP_DecryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, key, nonce) != 1) {
-    printf("here 2");
-    goto error;
-  }
+//   if (EVP_DecryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, key, nonce) != 1) {
+//     printf("here 2");
+//     goto error;
+//   }
 
-  if (EVP_CIPHER_CTX_set_padding(ctx, 0) != 1) // Maybe not necessary
-    goto error;
+//   if (EVP_CIPHER_CTX_set_padding(ctx, 0) != 1) // Maybe not necessary
+//     goto error;
 
-  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, tag) != 1)
-    goto error;
+//   if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, tag) != 1)
+//     goto error;
 
-  if (ad_len > 0 && EVP_DecryptUpdate(ctx, NULL, &len, ad, ad_len) != 1) {
-    printf("here 5");
-    goto error;
-  }
+//   if (ad_len > 0 && EVP_DecryptUpdate(ctx, NULL, &len, ad, ad_len) != 1) {
+//     printf("here 5");
+//     goto error;
+//   }
 
-  if (EVP_DecryptUpdate(ctx, plain, &len, cipher, cipher_len) != 1) {
-    printf("here 6");
-    goto error;
-  }
+//   if (EVP_DecryptUpdate(ctx, plain, &len, cipher, cipher_len) != 1) {
+//     printf("here 6");
+//     goto error;
+//   }
 
-  if (EVP_DecryptFinal_ex(ctx, NULL, &len) != 1) {
-    printf("here 7: (%d)", len);
-    goto error;
-  }
+//   if (EVP_DecryptFinal_ex(ctx, NULL, &len) != 1) {
+//     printf("here 7: (%d)", len);
+//     goto error;
+//   }
 
-  EVP_CIPHER_CTX_free(ctx);
-  return 0;
+//   EVP_CIPHER_CTX_free(ctx);
+//   return 0;
 
- error:
-  EVP_CIPHER_CTX_free(ctx);
-  return -1;
-}
+//  error:
+//   EVP_CIPHER_CTX_free(ctx);
+//   return -1;
+// }
 
-int
-encrypt_chacha(uint8_t *cipher, const uint8_t *plain, size_t plain_len, const uint8_t *key, size_t key_len, const void *ad, size_t ad_len, uint8_t *tag, size_t tag_len, const uint8_t nonce[NONCE_LENGTH])
-{
-  EVP_CIPHER_CTX *ctx;
-  int len;
-
-  if (! (ctx = EVP_CIPHER_CTX_new()))
-    return -1;
-
-  if (EVP_EncryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, key, nonce) != 1)
-    goto error;
-
-  if (EVP_CIPHER_CTX_set_padding(ctx, 0) != 1) // Maybe not necessary
-    goto error;
-
-  if (ad_len > 0 && EVP_EncryptUpdate(ctx, NULL, &len, ad, ad_len) != 1)
-    goto error;
-
-  if (EVP_EncryptUpdate(ctx, cipher, &len, plain, plain_len) != 1)
-    goto error;
-
-  assert(len == plain_len);
-
-  if (EVP_EncryptFinal_ex(ctx, NULL, &len) != 1)
-    goto error;
-
-  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag_len, tag) != 1)
-    goto error;
-
-  EVP_CIPHER_CTX_free(ctx);
-  return 0;
-
- error:
-  EVP_CIPHER_CTX_free(ctx);
-  return -1;
-}
 
 void get_error() {
   handle_error("Here");

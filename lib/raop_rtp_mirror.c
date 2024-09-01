@@ -38,6 +38,7 @@
 #include "stream.h"
 #include "utils.h"
 #include "plist/plist.h"
+// #include "pairing.h"
 
 #ifdef _WIN32
 #define CAST (char *)
@@ -168,6 +169,12 @@ void
 raop_rtp_mirror_init_aes(raop_rtp_mirror_t *raop_rtp_mirror, uint64_t *streamConnectionID)
 {
     mirror_buffer_init_aes(raop_rtp_mirror->buffer, streamConnectionID);
+}
+
+void
+raop_rtp_mirror_init_chacha(raop_rtp_mirror_t *raop_rtp_mirror, unsigned char *session_key, uint64_t *streamConnectionID) 
+{
+    mirror_buffer_init_chacha(raop_rtp_mirror->buffer, session_key, streamConnectionID);
 }
 
 #define RAOP_PACKET_LEN 32768
@@ -421,7 +428,7 @@ raop_rtp_mirror_thread(void *arg)
                     payload_decrypted = payload_out;
                 }
                 // Decrypt data
-                mirror_buffer_decrypt(raop_rtp_mirror->buffer, payload, payload_decrypted, payload_size);
+                mirror_buffer_decrypt(raop_rtp_mirror->buffer, packet, payload, payload_decrypted, &payload_size);
 
                 // It seems the AirPlay protocol prepends NALs with their size, which we're replacing with the 4-byte
                 // start code for the NAL Byte-Stream Format.
@@ -750,6 +757,8 @@ raop_rtp_mirror_start(raop_rtp_mirror_t *raop_rtp_mirror, unsigned short *mirror
     }
     //use_ipv6 = 0;
      
+    printf("Here 1\n");
+
     raop_rtp_mirror->mirror_data_lport = *mirror_data_lport;
     if (raop_rtp_mirror_init_socket(raop_rtp_mirror, use_ipv6) < 0) {
         logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror initializing socket failed");

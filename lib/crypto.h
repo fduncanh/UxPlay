@@ -109,6 +109,29 @@ void sha_final(sha_ctx_t *ctx, uint8_t *out, unsigned int *len);
 void sha_reset(sha_ctx_t *ctx);
 void sha_destroy(sha_ctx_t *ctx);
 
+// CHACHA
+
+#define NONCE_LENGTH 12
+#define CHACHA_KEY_LEN 32
+#define HOMEKIT_SESSION_KEY_LEN 64
+
+struct chacha_ctx_s {
+    unsigned char decryption_key[CHACHA_KEY_LEN];
+    uint64_t decryption_counter;
+    unsigned char encryption_key[CHACHA_KEY_LEN];
+    uint64_t encryption_counter;
+};
+
+typedef struct chacha_ctx_s chacha_ctx_t;
+
+int hkdf_get_key(unsigned char * session_key, int session_key_len, unsigned char * derived_key, int * derived_key_len, char * salt, char * info);
+
+int chacha_setup_keys(chacha_ctx_t *ctx, unsigned char *session_key, unsigned char *decryption_salt, unsigned char *decryption_info, unsigned char *encryption_salt, unsigned char *encryption_info);
+
+int decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, chacha_ctx_t *chacha_ctx, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len);
+
+int encrypt_chacha(uint8_t *cipher, const uint8_t *plain, size_t plain_len, chacha_ctx_t *chacha_ctx, const void *ad, size_t ad_len, uint8_t *tag, size_t tag_len);
+
 #ifdef __cplusplus
 }
 #endif

@@ -27,6 +27,7 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/pem.h>
+#include <openssl/kdf.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -580,3 +581,189 @@ void pk_to_base64(const unsigned char *pk, int pk_len, char *pk_base64, int len)
     memcpy(pk_base64,(*bufferPtr).data, len64);
 }
   
+// CHACHA
+
+/* Executes SHA512 RFC 5869 extract + expand, writing a derived key to okm
+
+   hkdfExtract(SHA512, salt, salt_len, ikm, ikm_len, prk);
+   hkdfExpand(SHA512, prk, SHA512_LEN, info, info_len, okm, okm_len);
+*/
+static int
+hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm_len, char * salt, char * info)
+{
+  EVP_PKEY_CTX *pctx;
+
+  if (okm_len > SHA512_DIGEST_LENGTH)
+    return -1;
+  if (! (pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL)))
+    return -1;
+  if (EVP_PKEY_derive_init(pctx) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha512()) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, (const unsigned char *)salt, strlen(salt)) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_set1_hkdf_key(pctx, ikm, ikm_len) <= 0)
+    goto error;
+  if (EVP_PKEY_CTX_add1_hkdf_info(pctx, (const unsigned char *)info, strlen(info)) <= 0)
+    goto error;
+  if (EVP_PKEY_derive(pctx, okm, &okm_len) <= 0)
+    goto error;
+
+  EVP_PKEY_CTX_free(pctx);
+  return 0;
+
+ error:
+  EVP_PKEY_CTX_free(pctx);
+  return -1;
+}
+
+int hkdf_get_key(unsigned char * session_key, int session_key_len, unsigned char * derived_key, int * derived_key_len, char * salt, char * info) {
+    return hkdf_extract_expand(derived_key, *derived_key_len, session_key, session_key_len, salt, info);
+}
+
+/* Creates the decryption key or the encryption key (or both) for HomeKit-based connections 
+    chacha_setup_keys(ctx, "DataStream-Salt123123123", "DataStream-Output-Encryption-Key", NULL, NULL);
+    chacha_setup_keys(ctx, "Events-Salt", "Events-Write-Encryption-Key", "Events-Salt", "Events-Read-Encryption-Key")
+
+    Returns:
+     0 on success
+     -1 on decryption key fail
+     -2 on encryption key fail
+*/
+int
+chacha_setup_keys(chacha_ctx_t *ctx, 
+                    unsigned char *session_key,
+                    unsigned char *decryption_salt, unsigned char *decryption_info,
+                    unsigned char *encryption_salt, unsigned char *encryption_info) 
+{
+    assert(ctx);
+
+    ctx->decryption_counter = 0;
+    ctx->encryption_counter = 0;
+
+    if (decryption_salt != NULL) {
+        if (hkdf_extract_expand(ctx->decryption_key, CHACHA_KEY_LEN, session_key, HOMEKIT_SESSION_KEY_LEN, decryption_salt, decryption_info)) {
+            return -1;
+        }
+    }
+
+    if (encryption_salt != NULL) {
+        if (hkdf_extract_expand(ctx->encryption_key, CHACHA_KEY_LEN, session_key, HOMEKIT_SESSION_KEY_LEN, encryption_salt, encryption_info)) {
+            return -2;
+        }
+    }
+
+    return 0;
+}
+
+#define CHACHA_DEBUG 0
+
+int
+decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, chacha_ctx_t *chacha_ctx, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len)
+{
+  EVP_CIPHER_CTX *ctx;
+  int len;
+  uint8_t nonce[12] = {0};
+  memcpy(nonce + 4, &chacha_ctx->decryption_counter, 8);
+  chacha_ctx->decryption_counter++;
+
+#if CHACHA_DEBUG
+  const unsigned char * aad = ad;
+
+  printf("DECRYPTION INFO:");
+
+  printf("\n\nCipher: (%d)\n", cipher_len);
+  for (int i = 0; i < cipher_len; i++) {
+    printf("%02X ", cipher[i]);
+  }
+
+  printf("\n\nDecryption key (%d)\n", 32);
+  for (int i = 0; i < 32; i++) {
+    printf("%02X ", chacha_ctx->decryption_key[i]);
+  }
+
+  printf("\n\nAD (%d)\n", ad_len);
+  for (int i = 0; i < ad_len; i++) {
+    printf("%02X ", aad[i]);
+  }
+
+  printf("\n\nTag (%d)\n", tag_len);
+  for (int i = 0; i < tag_len; i++) {
+    printf("%02X ", tag[i]);
+  }
+
+  printf("\n\nNonce\n");
+  for (int i = 0; i < NONCE_LENGTH; i++) {
+    printf("%02X ", nonce[i]);
+  } 
+#endif
+
+  if (! (ctx = EVP_CIPHER_CTX_new()))
+    return -1;
+
+  if (EVP_DecryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, chacha_ctx->decryption_key, nonce) != 1)
+    goto error;
+
+  if (EVP_CIPHER_CTX_set_padding(ctx, 0) != 1) // Maybe not necessary
+    goto error;
+
+  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, tag) != 1)
+    goto error;
+
+  if (ad_len > 0 && EVP_DecryptUpdate(ctx, NULL, &len, ad, ad_len) != 1)
+    goto error;
+
+  if (EVP_DecryptUpdate(ctx, plain, &len, cipher, cipher_len) != 1)
+    goto error;
+
+  if (EVP_DecryptFinal_ex(ctx, NULL, &len) != 1)
+    goto error;
+
+  EVP_CIPHER_CTX_free(ctx);
+  return 0;
+
+ error:
+  EVP_CIPHER_CTX_free(ctx);
+  return -1;
+}
+
+int
+encrypt_chacha(uint8_t *cipher, const uint8_t *plain, size_t plain_len, chacha_ctx_t *chacha_ctx, const void *ad, size_t ad_len, uint8_t *tag, size_t tag_len)
+{
+  EVP_CIPHER_CTX *ctx;
+  int len;
+  uint8_t nonce[12];
+  memcpy(nonce + 4, &chacha_ctx->encryption_counter, 8);
+  chacha_ctx->encryption_counter++;
+
+  if (! (ctx = EVP_CIPHER_CTX_new()))
+    return -1;
+
+  if (EVP_EncryptInit_ex(ctx, EVP_chacha20_poly1305(), NULL, chacha_ctx->encryption_key, nonce) != 1)
+    goto error;
+
+  if (EVP_CIPHER_CTX_set_padding(ctx, 0) != 1) // Maybe not necessary
+    goto error;
+
+  if (ad_len > 0 && EVP_EncryptUpdate(ctx, NULL, &len, ad, ad_len) != 1)
+    goto error;
+
+  if (EVP_EncryptUpdate(ctx, cipher, &len, plain, plain_len) != 1)
+    goto error;
+
+  assert(len == plain_len);
+
+  if (EVP_EncryptFinal_ex(ctx, NULL, &len) != 1)
+    goto error;
+
+  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag_len, tag) != 1)
+    goto error;
+
+  EVP_CIPHER_CTX_free(ctx);
+  return 0;
+
+ error:
+  EVP_CIPHER_CTX_free(ctx);
+  return -1;
+}

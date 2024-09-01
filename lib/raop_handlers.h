@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <plist/plist.h>
 #include "http_request.h"
+#include "crypto.h"
 #define AUDIO_SAMPLE_RATE 44100   /* all supported AirPlay audio format use this sample rate */
 #define SECOND_IN_USECS 1000000
 
@@ -310,7 +311,7 @@ raop_handler_pairsetup_pin(raop_conn_t *conn,
         memcpy(proof, client_proof, (int) client_proof_len);
         free (client_proof);
         int ret = srp_validate_proof(conn->session, conn->raop->pairing, (const unsigned char *) client_pk,
-                                     (int) client_pk_len, proof, (int) client_proof_len, (int) sizeof(proof), NULL, NULL, NULL, NULL);
+                                     (int) client_pk_len, proof, (int) client_proof_len, (int) sizeof(proof));
         free (client_pk);
         plist_free(req_root_node);
         if (ret < 0) {
@@ -452,10 +453,16 @@ raop_handler_pairsetup(raop_conn_t *conn,
                 int encryption_key_len = 32;
 
                 int ret2 = srp_validate_proof(conn->session, conn->raop->pairing, (const unsigned char *) client_pk,
-                                     384, proof, 0x40, 0x40, decryption_key, &decryption_key_len, encryption_key, &encryption_key_len);
+                                     384, proof, 0x40, 0x40);
                 if (ret2 < 0) {
                     logger_log(conn->raop->logger, LOGGER_ERR, "Client Authentication Failure (client proof not validated) %d", ret2);
                 }
+
+                unsigned char *session_key;
+                pairing_session_get_session_key(conn->session, &session_key);
+
+                chacha_ctx_t *ctx = malloc(sizeof(chacha_ctx_t));
+                chacha_setup_keys(ctx, session_key, "Control-Salt", "Control-Write-Encryption-Key", "Control-Salt", "Control-Read-Encryption-Key");
 
                 *response_data = malloc(69);
                 char *res_data2 = *response_data;
@@ -468,7 +475,7 @@ raop_handler_pairsetup(raop_conn_t *conn,
                 res_data2[4] = 0x40;
                 memcpy(&res_data2[5], proof, 0x40);
 
-                http_request_begin_encryption(request, decryption_key, decryption_key_len, encryption_key, encryption_key_len);
+                http_request_begin_encryption(request, ctx);
 
                 break;
         }
@@ -631,11 +638,14 @@ raop_handler_setup(raop_conn_t *conn,
     plist_from_bin(data, data_len, &req_root_node);
     plist_t req_ekey_node = plist_dict_get_item(req_root_node, "ekey");
     plist_t req_eiv_node = plist_dict_get_item(req_root_node, "eiv");
+    plist_t test_node = plist_dict_get_item(req_root_node, "timingPort");
 	
     // For the response
     plist_t res_root_node = plist_new_dict();
 
-    if (PLIST_IS_DATA(req_eiv_node) && PLIST_IS_DATA(req_ekey_node)) {
+    
+
+    if (PLIST_IS_INT(test_node)) {
         // The first SETUP call that initializes keys and timing
 
         unsigned char aesiv[16];
@@ -658,10 +668,10 @@ raop_handler_setup(raop_conn_t *conn,
         plist_get_string_val(req_model_node, &model);  
         plist_t req_name_node = plist_dict_get_item(req_root_node, "name");
         plist_get_string_val(req_name_node, &name);  
-	if (conn->raop->callbacks.report_client_request) {
+	    if (conn->raop->callbacks.report_client_request) {
             conn->raop->callbacks.report_client_request(conn->raop->callbacks.cls, deviceID, model, name, &admit_client);
         }
-	if (admit_client && deviceID && name && conn->raop->callbacks.register_client) {
+	    if (admit_client && deviceID && name && conn->raop->callbacks.register_client) {
             bool pending_registration;
             char *client_device_id;
             char *client_pk;   /* encoded as null-terminated  base64 string*/
@@ -669,12 +679,12 @@ raop_handler_setup(raop_conn_t *conn,
             if (pending_registration) {
                 if (client_pk && !strcmp(deviceID, client_device_id)) { 
                     conn->raop->callbacks.register_client(conn->raop->callbacks.cls, client_device_id, client_pk, name); 
-		}
-	    }
+		        }
+	        }
             if (client_pk) {
                 free (client_pk);
             }
-	}
+	    }
         if (deviceID) {
             free (deviceID);
             deviceID = NULL;
@@ -692,37 +702,37 @@ raop_handler_setup(raop_conn_t *conn,
             plist_free(res_root_node);
             plist_free(req_root_node);
             return;
-	}
+	    }
 
-        plist_get_data_val(req_eiv_node, &eiv, &eiv_len);
-        memcpy(aesiv, eiv, 16);
-        free(eiv);	
-        logger_log(conn->raop->logger, LOGGER_DEBUG, "eiv_len = %llu", eiv_len);
-	if (logger_debug) {
-            char* str = utils_data_to_string(aesiv, 16, 16);
-            logger_log(conn->raop->logger, LOGGER_DEBUG, "16 byte aesiv (needed for AES-CBC audio decryption iv):\n%s", str);
-            free(str);
-	}
+        // plist_get_data_val(req_eiv_node, &eiv, &eiv_len);
+        // memcpy(aesiv, eiv, 16);
+        // free(eiv);	
+        // logger_log(conn->raop->logger, LOGGER_DEBUG, "eiv_len = %llu", eiv_len);
+	    // if (logger_debug) {
+        //     char* str = utils_data_to_string(aesiv, 16, 16);
+        //     logger_log(conn->raop->logger, LOGGER_DEBUG, "16 byte aesiv (needed for AES-CBC audio decryption iv):\n%s", str);
+        //     free(str);
+	    // }
 
-        char* ekey = NULL;
-        uint64_t ekey_len = 0;
-        plist_get_data_val(req_ekey_node, &ekey, &ekey_len);
-        memcpy(eaeskey,ekey,72);
-        free(ekey);
-        logger_log(conn->raop->logger, LOGGER_DEBUG, "ekey_len = %llu", ekey_len);
-        // eaeskey is 72 bytes, aeskey is 16 bytes
-	if (logger_debug) {
-            char *str = utils_data_to_string((unsigned char *) eaeskey, ekey_len, 16);
-            logger_log(conn->raop->logger, LOGGER_DEBUG, "ekey:\n%s", str);
-            free (str);
-        }
-        int ret = fairplay_decrypt(conn->fairplay, (unsigned char*) eaeskey, aeskey);
-        logger_log(conn->raop->logger, LOGGER_DEBUG, "fairplay_decrypt ret = %d", ret);
-        if (logger_debug) {
-            char *str = utils_data_to_string(aeskey, 16, 16);
-            logger_log(conn->raop->logger, LOGGER_DEBUG, "16 byte aeskey (fairplay-decrypted from ekey):\n%s", str);
-            free(str);
-        }
+        // char* ekey = NULL;
+        // uint64_t ekey_len = 0;
+        // plist_get_data_val(req_ekey_node, &ekey, &ekey_len);
+        // memcpy(eaeskey,ekey,72);
+        // free(ekey);
+        // logger_log(conn->raop->logger, LOGGER_DEBUG, "ekey_len = %llu", ekey_len);
+        // // eaeskey is 72 bytes, aeskey is 16 bytes
+	    // if (logger_debug) {
+        //     char *str = utils_data_to_string((unsigned char *) eaeskey, ekey_len, 16);
+        //     logger_log(conn->raop->logger, LOGGER_DEBUG, "ekey:\n%s", str);
+        //     free (str);
+        // }
+        // int ret = fairplay_decrypt(conn->fairplay, (unsigned char*) eaeskey, aeskey);
+        // logger_log(conn->raop->logger, LOGGER_DEBUG, "fairplay_decrypt ret = %d", ret);
+        // if (logger_debug) {
+        //     char *str = utils_data_to_string(aeskey, 16, 16);
+        //     logger_log(conn->raop->logger, LOGGER_DEBUG, "16 byte aeskey (fairplay-decrypted from ekey):\n%s", str);
+        //     free(str);
+        // }
 
         const char *user_agent = http_request_get_header(request, "User-Agent");
         logger_log(conn->raop->logger, LOGGER_INFO, "Client identified as User-Agent: %s", user_agent);	
@@ -779,26 +789,26 @@ raop_handler_setup(raop_conn_t *conn,
                 logger_log(conn->raop->logger, LOGGER_ERR, "Client specified AirPlay2 \"Remote Control\" protocol\n"
 			   " Only AirPlay v1 protocol (using NTP and timing port) is supported");
             }
-	}
+        }
         char *timing_protocol = NULL;
-	timing_protocol_t time_protocol;
+        timing_protocol_t time_protocol;
         plist_t req_timing_protocol_node = plist_dict_get_item(req_root_node, "timingProtocol");
         plist_get_string_val(req_timing_protocol_node, &timing_protocol);
         if (timing_protocol) {
-             int string_len = strlen(timing_protocol);
-             if (strncmp(timing_protocol, "NTP", string_len) == 0) {
-                 time_protocol = NTP;
-             } else if (strncmp(timing_protocol, "None", string_len) == 0) {
-                 time_protocol = TP_NONE;
-             } else {
-                 time_protocol = TP_OTHER;
-             }
-             if (time_protocol != NTP) {
-                 logger_log(conn->raop->logger, LOGGER_ERR, "Client specified timingProtocol=%s,"
-                            " but timingProtocol= NTP is required here", timing_protocol);
-             }
-             free (timing_protocol);
-             timing_protocol = NULL;
+            int string_len = strlen(timing_protocol);
+            if (strncmp(timing_protocol, "NTP", string_len) == 0) {
+                time_protocol = NTP;
+            } else if (strncmp(timing_protocol, "None", string_len) == 0) {
+                time_protocol = TP_NONE;
+            } else {
+                time_protocol = TP_OTHER;
+            }
+            if (time_protocol != NTP) {
+                logger_log(conn->raop->logger, LOGGER_ERR, "Client specified timingProtocol=%s,"
+                        " but timingProtocol= NTP is required here", timing_protocol);
+            }
+            free (timing_protocol);
+            timing_protocol = NULL;
         } else {
             logger_log(conn->raop->logger, LOGGER_DEBUG, "Client did not specify timingProtocol,"
                        " old protocol without offset will be used");
@@ -806,8 +816,9 @@ raop_handler_setup(raop_conn_t *conn,
         }
         uint64_t timing_rport = 0;
         plist_t req_timing_port_node = plist_dict_get_item(req_root_node, "timingPort");
-	if (req_timing_port_node) {
-             plist_get_uint_val(req_timing_port_node, &timing_rport);
+        if (req_timing_port_node)
+        {
+            plist_get_uint_val(req_timing_port_node, &timing_rport);
         }
         if (timing_rport) {
             logger_log(conn->raop->logger, LOGGER_DEBUG, "timing_rport = %llu", timing_rport);
@@ -837,9 +848,10 @@ raop_handler_setup(raop_conn_t *conn,
                                        remote, conn->remotelen, aeskey, aesiv);
         conn->raop_rtp_mirror = raop_rtp_mirror_init(conn->raop->logger, &conn->raop->callbacks,
                                                      conn->raop_ntp, remote, conn->remotelen, aeskey);
+        printf("RAOP RTP MIRROR: %p", conn->raop_rtp_mirror);
 
-	// plist_t res_event_port_node = plist_new_uint(conn->raop->port);
-	plist_t res_event_port_node = plist_new_uint(0);
+        // plist_t res_event_port_node = plist_new_uint(conn->raop->port);
+        plist_t res_event_port_node = plist_new_uint(0);
         plist_t res_timing_port_node = plist_new_uint(timing_lport);
         plist_dict_set_item(res_root_node, "timingPort", res_timing_port_node);
         plist_dict_set_item(res_root_node, "eventPort", res_event_port_node);
@@ -867,11 +879,16 @@ raop_handler_setup(raop_conn_t *conn,
                     plist_t stream_id_node = plist_dict_get_item(req_stream_node, "streamConnectionID");
                     uint64_t stream_connection_id;
                     plist_get_uint_val(stream_id_node, &stream_connection_id);
+                    // test_get_stream_key(conn->session, stream_connection_id);
                     logger_log(conn->raop->logger, LOGGER_DEBUG, "streamConnectionID (needed for AES-CTR video decryption"
                                " key and iv): %llu", stream_connection_id);
 
                     if (conn->raop_rtp_mirror) {
+                        // raop_rtp_mirror_init_aes(conn->raop_rtp_mirror, &stream_connection_id);
+                        unsigned char *session_key;
+                        pairing_session_get_session_key(conn->session, &session_key);
                         raop_rtp_mirror_init_aes(conn->raop_rtp_mirror, &stream_connection_id);
+                        raop_rtp_mirror_init_chacha(conn->raop_rtp_mirror, session_key, &stream_connection_id);
                         raop_rtp_mirror_start(conn->raop_rtp_mirror, &dport, conn->raop->clientFPSdata);
                         logger_log(conn->raop->logger, LOGGER_DEBUG, "Mirroring initialized successfully");
                     } else {

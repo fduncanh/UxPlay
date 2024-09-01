@@ -24,6 +24,8 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 
+#include <stdio.h>
+
 #define SECOND_IN_NSECS 1000000000UL
 #ifdef X_DISPLAY_FIX
 #include <gst/video/navigation.h>
@@ -267,6 +269,11 @@ void video_renderer_render_buffer(unsigned char* data, int *data_len, int *nal_c
      * byte-aligned: the first byte of invalid data (decryption failed) is 0x01   */
     if (data[0]) {
         logger_log(logger, LOGGER_ERR, "*** ERROR decryption of video packet failed ");
+
+        printf("PACKET DUMP (%d): \n", data_len);
+        for (int i = 0; i < *data_len; i++) {
+            printf("%02X ", data[i]);
+        }
     } else {
         if (first_packet) {
             logger_log(logger, LOGGER_INFO, "Begin streaming to GStreamer video pipeline");

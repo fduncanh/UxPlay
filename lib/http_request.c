@@ -22,6 +22,7 @@
 
 #include "http_request.h"
 #include "llhttp/llhttp.h"
+#include "crypto.h"
 
 struct http_request_s {
     llhttp_t parser;
@@ -40,11 +41,7 @@ struct http_request_s {
 
     int complete;
     
-    unsigned char *decryption_key;
-    int decryption_key_len;
-
-    unsigned char *encryption_key;
-    int encryption_key_len;
+    chacha_ctx_t *chacha_ctx;
 };
 
 static int
@@ -317,26 +314,21 @@ http_request_get_header_string(http_request_t *request, char **header_str)
 }
 
 void
-http_request_begin_encryption(http_request_t *request, unsigned char * decryption_key, int decryption_key_len, unsigned char * encryption_key, int encryption_key_len) {
+http_request_begin_encryption(http_request_t *request, chacha_ctx_t *chacha_ctx) {
     assert(request);
 
-    request->decryption_key = decryption_key;
-    request->decryption_key_len = decryption_key_len;
-    request->encryption_key = encryption_key;
-    request->encryption_key_len = encryption_key_len;
+    request->chacha_ctx = chacha_ctx;
 }
 
 int
-http_request_get_encryption(http_request_t *request, unsigned char ** decryption_key, int *decryption_key_len, unsigned char ** encryption_key, int *encryption_key_len) {
+http_request_get_encryption(http_request_t *request, chacha_ctx_t **chacha_ctx) {
     assert(request);
 
-    if (request->decryption_key_len > 0) {
-        *decryption_key = request->decryption_key;
-        *decryption_key_len = request->decryption_key_len;
-        *encryption_key = request->encryption_key;
-        *encryption_key_len = request->encryption_key_len;
+    if (request->chacha_ctx) {
+        *chacha_ctx = request->chacha_ctx;
         return 1;
     }
+
     return 0;
 }
 

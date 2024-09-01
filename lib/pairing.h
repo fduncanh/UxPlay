@@ -46,6 +46,7 @@ int pairing_session_check_handshake_status(pairing_session_t *session);
 int pairing_session_handshake(pairing_session_t *session, const unsigned char ecdh_key[X25519_KEY_SIZE],
                               const unsigned char ed_key[ED25519_KEY_SIZE]);
 int pairing_session_get_public_key(pairing_session_t *session, unsigned char ecdh_key[X25519_KEY_SIZE]);
+int pairing_session_get_session_key(pairing_session_t *session, unsigned char ** session_key);
 int random_pin();
 int pairing_session_get_signature(pairing_session_t *session, unsigned char signature[PAIRING_SIG_SIZE]);
 int pairing_session_finish(pairing_session_t *session, const unsigned char signature[PAIRING_SIG_SIZE]);
@@ -58,7 +59,7 @@ int pairing_get_ecdh_secret_key(pairing_session_t *session, unsigned char ecdh_s
 int srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_id, const char *pin,
 		 const char **salt, int *len_salt, const char **pk, int *len_pk);
 int srp_validate_proof(pairing_session_t *session, pairing_t *pairing, const unsigned char *A,
-		       int len_A, unsigned char *proof, int client_proof_len, int proof_len, unsigned char * decryption_key, int * decryption_key_len, unsigned char * encryption_key, int * encryption_key_len);
+		       int len_A, unsigned char *proof, int client_proof_len, int proof_len);
 int srp_confirm_pair_setup(pairing_session_t *session, pairing_t *pairing, unsigned char *epk,
                            unsigned char *auth_tag);
 void access_client_session_data(pairing_session_t *session, char **username, char **client_pk, bool *setup);
