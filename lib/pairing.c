@@ -314,9 +314,6 @@ random_pin() {
 int
 srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_id, const char *pin,
              const char **salt, int *len_salt, const char **pk, int *len_pk) {
-    // if (strlen(device_id) > SRP_USERNAME_SIZE) {
-    //     return -1;
-    // }
 
     strncpy(session->username, device_id, 10);
     
@@ -332,9 +329,7 @@ srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_
     get_random_bytes(session->srp->private_key, SRP_PRIVATE_KEY_SIZE);
     
     const unsigned char *srp_b = session->srp->private_key;
-    // const unsigned char b_bytes[] = { 0x36, 0xBF, 0x27, 0xC5, 0xD3, 0x38, 0xCA, 0x0A, 0xCA, 0xB0, 0x4E, 0x09, 0xEB, 0x8F, 0x3F, 0x7A, 0x8E, 0xCB, 0x6C, 0xB5, 0x84, 0x01, 0x34, 0xCF, 0x71, 0x4D, 0x2F, 0xB2, 0x61, 0xCF, 0xFA, 0x31 };
-    // const unsigned char *srp_b = b_bytes;
-    // memcpy(session->srp->private_key, b_bytes, 32);
+
     unsigned char * srp_B;
     unsigned char * srp_s;
     unsigned char * srp_v;
@@ -362,10 +357,6 @@ srp_new_user(pairing_session_t *session, pairing_t *pairing, const char *device_
                                     srp_b, len_b,
                                     (const unsigned char **) &srp_B, &len_B,
                                     NULL, NULL, 1);
-
-    // for (size_t i = 0; i < 384; i++) {
-    //     printf("%02X ", srp_B[i]);
-    // }
 
     *pk = (char *) srp_B;
     *len_pk = len_B;
@@ -409,30 +400,8 @@ srp_validate_proof(pairing_session_t *session, pairing_t *pairing, const unsigne
     memcpy(proof, M2, proof_len);
     srp_verifier_delete(verifier);
 
-// { 0, "Control-Salt", "Control-Write-Encryption-Key", "" },
-// { 0, "Control-Salt", "Control-Read-Encryption-Key", "" },
-
-    // hkdf_get_key(session_key, len_K, decryption_key, decryption_key_len, "Control-Salt", "Control-Write-Encryption-Key");
-
-    // hkdf_get_key(session_key, len_K, encryption_key, encryption_key_len, "Control-Salt", "Control-Read-Encryption-Key");
-
     return 0;
 }
-
-// int test_get_stream_key(pairing_session_t *session, uint64_t streamConnectionID) {
-//     unsigned char streamKey[32];
-//     int streamKeyLen = 32;
-// 	char streamKeySalt[16 + 20]; // Needs to be large enough to hold "DataStream-Salt" + streamConnectionID as a str
-//     int ret = snprintf( streamKeySalt, sizeof(streamKeySalt), "%s%llu", "DataStream-Salt", streamConnectionID );
-//     hkdf_get_key(session->srp->session_key, sizeof(session->srp->session_key), streamKey, &streamKeyLen, streamKeySalt, "DataStream-Output-Encryption-Key");
-
-//     printf("Stream Key:\n\n");
-//     for (int i = 0; i < streamKeyLen; i++) {
-//         printf("%02X ", streamKey[i]);
-//     }
-
-//     printf("\n\n\n");
-// }
 
 int
 srp_confirm_pair_setup(pairing_session_t *session, pairing_t *pairing,
@@ -483,11 +452,6 @@ srp_confirm_pair_setup(pairing_session_t *session, pairing_t *pairing,
     epk_len = gcm_encrypt(pk, ED25519_KEY_SIZE, epk, aesKey, aesIV, auth_tag);
     return epk_len;    
 }
-
-// int
-// raop_mirroring_get_key(pairing_session_t *session, uint64_t streamConnectionID, unsigned char * inKey, int * in_key_len) {
-//     hkdf_get_key(session->srp->verifier, in_key, in_key_len);)
-// }
 
 void access_client_session_data(pairing_session_t *session, char **username, char **client_pk64, bool *setup) {
     int len64 = 4 * (1 + (ED25519_KEY_SIZE / 3)) + 1;

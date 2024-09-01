@@ -150,6 +150,10 @@ httpd_remove_connection(httpd_t *httpd, http_connection_t *connection)
     connection->connected = 0;
     connection->user_data = NULL;
     connection->type = CONNECTION_TYPE_UNKNOWN;
+    if (connection->chacha_ctx) {
+        free(connection->chacha_ctx);
+        connection->chacha_ctx = NULL;
+    }
     httpd->open_connections--;
 }
 

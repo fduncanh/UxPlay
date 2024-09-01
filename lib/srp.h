@@ -192,33 +192,6 @@ void                  srp_verifier_verify_session( struct SRPVerifier * ver,
                                                    const unsigned char * user_M, 
                                                    const unsigned char ** bytes_HAMK );
 
-
-enum pair_keys
-{
-  PAIR_SETUP_MSG01 = 0,
-  PAIR_SETUP_MSG02,
-  PAIR_SETUP_MSG03,
-  PAIR_SETUP_MSG04,
-  PAIR_SETUP_MSG05,
-  PAIR_SETUP_MSG06,
-  PAIR_SETUP_CONTROLLER_SIGN,
-  PAIR_SETUP_ACCESSORY_SIGN,
-  PAIR_VERIFY_MSG01,
-  PAIR_VERIFY_MSG02,
-  PAIR_VERIFY_MSG03,
-  PAIR_VERIFY_MSG04,
-  PAIR_CONTROL_WRITE,
-  PAIR_CONTROL_READ,
-  PAIR_EVENTS_WRITE,
-  PAIR_EVENTS_READ,
-};
-
-// int hkdf_get_key(unsigned char * session_key, int session_key_len, unsigned char * derived_key, int * derived_key_len, char * salt, char * info);
-
-// int decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, const uint8_t *key, uint8_t key_len, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len, const uint8_t nonce[NONCE_LENGTH]);
-
-// int encrypt_chacha(uint8_t *cipher, const uint8_t *plain, size_t plain_len, const uint8_t *key, size_t key_len, const void *ad, size_t ad_len, uint8_t *tag, size_t tag_len, const uint8_t nonce[NONCE_LENGTH]);
-
 void get_error();
 /*******************************************************************************/
 

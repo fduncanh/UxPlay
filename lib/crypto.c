@@ -589,7 +589,7 @@ void pk_to_base64(const unsigned char *pk, int pk_len, char *pk_base64, int len)
    hkdfExpand(SHA512, prk, SHA512_LEN, info, info_len, okm, okm_len);
 */
 static int
-hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm_len, char * salt, char * info)
+hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm_len, uint8_t * salt, uint8_t * info)
 {
   EVP_PKEY_CTX *pctx;
 
@@ -601,11 +601,11 @@ hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm
     goto error;
   if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha512()) <= 0)
     goto error;
-  if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, (const unsigned char *)salt, strlen(salt)) <= 0)
+  if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, (const unsigned char *)salt, strlen((const char *)salt)) <= 0)
     goto error;
   if (EVP_PKEY_CTX_set1_hkdf_key(pctx, ikm, ikm_len) <= 0)
     goto error;
-  if (EVP_PKEY_CTX_add1_hkdf_info(pctx, (const unsigned char *)info, strlen(info)) <= 0)
+  if (EVP_PKEY_CTX_add1_hkdf_info(pctx, (const unsigned char *)info, strlen((const char *)info)) <= 0)
     goto error;
   if (EVP_PKEY_derive(pctx, okm, &okm_len) <= 0)
     goto error;
@@ -616,10 +616,6 @@ hkdf_extract_expand(uint8_t *okm, size_t okm_len, const uint8_t *ikm, size_t ikm
  error:
   EVP_PKEY_CTX_free(pctx);
   return -1;
-}
-
-int hkdf_get_key(unsigned char * session_key, int session_key_len, unsigned char * derived_key, int * derived_key_len, char * salt, char * info) {
-    return hkdf_extract_expand(derived_key, *derived_key_len, session_key, session_key_len, salt, info);
 }
 
 /* Creates the decryption key or the encryption key (or both) for HomeKit-based connections 

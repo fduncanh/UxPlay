@@ -124,8 +124,6 @@ struct chacha_ctx_s {
 
 typedef struct chacha_ctx_s chacha_ctx_t;
 
-int hkdf_get_key(unsigned char * session_key, int session_key_len, unsigned char * derived_key, int * derived_key_len, char * salt, char * info);
-
 int chacha_setup_keys(chacha_ctx_t *ctx, unsigned char *session_key, unsigned char *decryption_salt, unsigned char *decryption_info, unsigned char *encryption_salt, unsigned char *encryption_info);
 
 int decrypt_chacha(uint8_t *plain, const uint8_t *cipher, uint16_t cipher_len, chacha_ctx_t *chacha_ctx, const void *ad, uint8_t ad_len, uint8_t *tag, uint8_t tag_len);

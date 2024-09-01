@@ -377,8 +377,6 @@ dnssd_register_airplay(dnssd_t *dnssd, unsigned short port)
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "srcvers", strlen(AIRPLAY_SRCVERS), AIRPLAY_SRCVERS);
     dnssd->TXTRecordSetValue(&dnssd->airplay_record, "vv", strlen(AIRPLAY_VV), AIRPLAY_VV);
 
-    return 0;
-
     /* Register the service */
     retval = dnssd->DNSServiceRegister(&dnssd->airplay_service, 0, 0,
                               dnssd->name, "_airplay._tcp",
