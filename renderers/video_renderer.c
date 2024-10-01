@@ -464,7 +464,6 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
 #ifdef  X_DISPLAY_FIX
     case GST_MESSAGE_ELEMENT:
         if (renderer_type[type]->gst_window && renderer_type[type]->gst_window->window) {
-	  printf("hello element with gst_window \n");
             GstNavigationMessageType message_type = gst_navigation_message_get_type (message);
             if (message_type == GST_NAVIGATION_MESSAGE_EVENT) {
                 GstEvent *event = NULL;
