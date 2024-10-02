@@ -277,17 +277,13 @@ void video_renderer_pause() {
 }
 
 void video_renderer_resume() {
-    if (video_renderer_is_paused()) {
-        logger_log(logger, LOGGER_DEBUG, "video renderer resumed");
-        gst_element_set_state (renderer->pipeline, GST_STATE_PLAYING);
-        gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
-    }
-}
-
-bool video_renderer_is_paused() {
+    gst_element_set_state (renderer->pipeline, GST_STATE_PLAYING);
     GstState state;
-    gst_element_get_state(renderer->pipeline, &state, NULL, 0);
-    return (state == GST_STATE_PAUSED);
+    /* wait with timeout 100 msec for pipeline to change state from PAUSED to PLAYING */
+    gst_element_get_state(renderer->pipeline, &state, NULL, 100 * GST_MSECOND);
+    const gchar *state_name = gst_element_state_get_name(state);
+    logger_log(logger, LOGGER_DEBUG, "video renderer resumed: state %s", state_name);
+    gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
 }
 
 void video_renderer_start() {
@@ -514,7 +510,7 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
     return TRUE;
 }
 
-void video_renderer_h265 (bool video_is_h265) {
+void video_renderer_choose_codec (bool video_is_h265) {
     /* set renderer to h264 or h265, depending on pps/sps received by raop_rtp_mirror */
     video_renderer_t *renderer_new = video_is_h265 ? renderer_type[1] : renderer_type[0];
     if (renderer == renderer_new) {

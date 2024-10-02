@@ -1482,11 +1482,8 @@ extern "C" void video_reset(void *cls) {
 
 extern "C" void video_set_codec(void *cls, video_codec_t codec) {
     if (use_video) {
-        if (codec == VIDEO_CODEC_H265) {
-            video_renderer_h265(true);
-        } else {
-            video_renderer_h265(false);
-        }
+        bool video_is_h265 = (codec == VIDEO_CODEC_H265); 
+        video_renderer_choose_codec(video_is_h265);
     }
 }
 
@@ -1614,18 +1611,12 @@ extern "C" void video_process (void *cls, raop_ntp_t *ntp, video_decode_struct *
 }
 
 extern "C" void video_pause (void *cls) {
-#ifdef GST_124
-    return;  //pause/resume changes in GStreamer-1.24 break this code
-#endif
     if (use_video) {
         video_renderer_pause();
     }
 }
 
 extern "C" void video_resume (void *cls) {
-#ifdef GST_124
-    return;  //pause/resume changes in GStreamer-1.24 break this code
-#endif
     if (use_video) {
         video_renderer_resume();
     }

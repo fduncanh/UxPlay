@@ -59,12 +59,11 @@ void video_renderer_start ();
 void video_renderer_stop ();
 void video_renderer_pause ();
 void video_renderer_resume ();
-bool video_renderer_is_paused();
 void video_renderer_render_buffer (unsigned char* data, int *data_len, int *nal_count, uint64_t *ntp_time);
 void video_renderer_flush ();
 void video_renderer_destroy ();
 void video_renderer_size(float *width_source, float *height_source, float *width, float *height);
-void video_renderer_h265(bool is_h265);
+void video_renderer_choose_codec(bool is_h265);
 
 unsigned int video_renderer_listen(void *loop, int id);
 unsigned int video_reset_callback(void *loop);

@@ -38,15 +38,6 @@ pkg_check_modules(GST REQUIRED    gstreamer-1.0>=1.4
                                   gstreamer-app-1.0>=1.4
 )
 
-# temporary hack to deal with an issue in gstreamer 1.24
-pkg_check_modules ( GST124 gstreamer-1.0>=1.24 )
-if ( GST124_FOUND )
-  message( STATUS "*** GStreamer >= 1.24: GST_124 will be defined" )
-  set( GST_124 "1" CACHE STRING "define GST_124" )
-else()
-    message( STATUS "No problem: will use Gtreamer < 1.24" )
-endif()
-
 add_library( renderers
              STATIC
              audio_renderer.c

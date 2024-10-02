@@ -200,6 +200,7 @@ raop_rtp_mirror_thread(void *arg)
     const char h264[] = "h264";
     const char h265[] = "h265";
     bool unsupported_codec = false;
+    bool video_stream_suspended = false;
     
     while (1) {
         fd_set rfds;
@@ -529,7 +530,6 @@ raop_rtp_mirror_thread(void *arg)
                     prepend_sps_pps =  false;
                 }
 
-                raop_rtp_mirror->callbacks.video_resume(raop_rtp_mirror->callbacks.cls);
                 raop_rtp_mirror->callbacks.video_process(raop_rtp_mirror->callbacks.cls, raop_rtp_mirror->ntp, &video_data);
                 free(payload_out);
                 break;
@@ -556,6 +556,14 @@ raop_rtp_mirror_thread(void *arg)
                 logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "\nReceived unencrypted codec packet from client:"
                            " payload_size %d header %s ts_client = %8.6f",
 			   payload_size, packet_description, (double) ntp_timestamp_remote / SEC);
+
+                if (!video_stream_suspended && (packet[6] == 0x56 || packet[6] == 0x5e)) {
+                    video_stream_suspended = true;
+                    raop_rtp_mirror->callbacks.video_pause(raop_rtp_mirror->callbacks.cls);
+                } else if (video_stream_suspended && (packet[6] == 0x16 || packet[6] == 0x1e)) {
+                    raop_rtp_mirror->callbacks.video_resume(raop_rtp_mirror->callbacks.cls);
+                    video_stream_suspended = false;
+                }
 
                 codec = VIDEO_CODEC_UNKNOWN;
                 assert (raop_rtp_mirror->callbacks.video_set_codec);
