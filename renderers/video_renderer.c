@@ -50,7 +50,7 @@ struct video_renderer_s {
     GstElement *appsrc, *pipeline;
     GstBus *bus;
     const char *codec;
-    bool autovideo;
+    bool autovideo, state_pending;
     int id;
 #ifdef  X_DISPLAY_FIX
     bool use_x11;
@@ -445,6 +445,15 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
 	//   g_main_loop_quit( (GMainLoop *) loop);
         break;
     case GST_MESSAGE_STATE_CHANGED:
+        if (renderer_type[type]->state_pending && strstr(GST_MESSAGE_SRC_NAME(message), "pipeline")) {
+            GstState state;
+            gst_element_get_state(renderer_type[type]->pipeline, &state, NULL,0);
+	    if (state == GST_STATE_NULL) {
+                gst_element_set_state(renderer_type[type]->pipeline, GST_STATE_PLAYING);
+	    } else if (state == GST_STATE_PLAYING) {
+                renderer_type[type]->state_pending = false;
+            }
+        }
         if (renderer_type[type]->autovideo) {
             char *sink = strstr(GST_MESSAGE_SRC_NAME(message), "-actual-sink-");
             if (sink) {
@@ -512,19 +521,19 @@ void video_renderer_h265 (bool video_is_h265) {
         return;
     }
     video_renderer_t *renderer_prev = renderer;
-    
-    if (renderer) {
-        video_renderer_pause();
-    }
     renderer = renderer_new;
-    if (renderer_prev && renderer_prev != renderer) {
+    gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
+    /* it seems unlikely that the codec will change between h264 and h265 during a connection,
+     * but in case it does, we set the previous renderer to GST_STATE_NULL, detect
+     * when this is finished by listening for the bus message, and then reset it to
+     * GST_STATE_READY, so it can be reused if the codec changes again. */
+    if (renderer_prev) {
         gst_app_src_end_of_stream (GST_APP_SRC(renderer_prev->appsrc));
         gst_bus_set_flushing(renderer_prev->bus, TRUE);
-        /* set state of previous renderer to GST_STATE_NULL to (hopefully?)  close video window */
-        gst_element_set_state (renderer_prev->pipeline, GST_STATE_NULL);	   
-        gst_element_set_state (renderer_prev->pipeline, GST_STATE_READY);
+        /* set state of previous renderer to GST_STATE_NULL to (hopefully?) close its video window */
+        gst_element_set_state (renderer_prev->pipeline, GST_STATE_NULL);
+	renderer_prev->state_pending = true;     // will set state to PLAYING once state is NULL
     }
-    video_renderer_resume();
 }
 
 unsigned int video_reset_callback(void * loop) {
