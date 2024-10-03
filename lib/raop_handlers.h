@@ -158,7 +158,7 @@ raop_handler_info(raop_conn_t *conn,
     plist_dict_set_item(displays_0_node, "height", displays_0_height_node);
     plist_dict_set_item(displays_0_node, "widthPixels", displays_0_width_pixels_node);
     plist_dict_set_item(displays_0_node, "heightPixels", displays_0_height_pixels_node);
-    plist_dict_set_item(displays_0_node, "rotation", displays_0_rotation_node);    
+    plist_dict_set_item(displays_0_node, "rotation", displays_0_rotation_node);
     plist_dict_set_item(displays_0_node, "refreshRate", displays_0_refresh_rate_node);
     plist_dict_set_item(displays_0_node, "maxFPS", displays_0_max_fps_node);
     plist_dict_set_item(displays_0_node, "overscanned", displays_0_overscanned_node);
@@ -749,13 +749,15 @@ raop_handler_setup(raop_conn_t *conn,
         conn->raop_rtp_mirror = raop_rtp_mirror_init(conn->raop->logger, &conn->raop->callbacks,
                                                      conn->raop_ntp, remote, conn->remotelen, aeskey);
 
-	// plist_t res_event_port_node = plist_new_uint(conn->raop->port);
-	plist_t res_event_port_node = plist_new_uint(0);
+        /* the event port is not used in mirror mode or audio mode */
+        unsigned short event_port = 0;
+        plist_t res_event_port_node = plist_new_uint(event_port);
+
         plist_t res_timing_port_node = plist_new_uint(timing_lport);
         plist_dict_set_item(res_root_node, "timingPort", res_timing_port_node);
         plist_dict_set_item(res_root_node, "eventPort", res_event_port_node);
 
-        logger_log(conn->raop->logger, LOGGER_DEBUG, "eport = %d, tport = %d", 0, timing_lport);
+        logger_log(conn->raop->logger, LOGGER_DEBUG, "eport = %d, tport = %d", event_port, timing_lport);
     }
 
     // Process stream setup requests
