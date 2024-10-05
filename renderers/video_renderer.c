@@ -143,6 +143,48 @@ void video_renderer_size(float *f_width_source, float *f_height_source, float *f
     logger_log(logger, LOGGER_DEBUG, "begin video stream wxh = %dx%d; source %dx%d", width, height, width_source, height_source);
 }
 
+GstElement *make_video_sink(const char *videosink, const char *videosink_options) {
+  /* used to build a videosink for playbin, using the user-specified string "videosink" */ 
+    GstElement *video_sink = gst_element_factory_make(videosink, "videosink");
+    if (!video_sink) {
+        return NULL;
+    }
+
+    /* process the video_sink_optons */
+    size_t len = strlen(videosink_options);
+    if (!len) {
+        return video_sink;
+    }
+
+    char *options  = (char *) malloc(len + 1);
+    strncpy(options, videosink_options, len + 1);
+
+    /* remove any extension begining with "!" */
+    char *end = strchr(options, '!');
+    if (end) {   
+      *end = '\0';
+    }
+
+    /* add any fullscreen options "property=pval" included in string videosink_options*/    
+    /* OK to use strtok_r in Windows with MSYS2 (POSIX); use strtok_s for MSVC */
+    char *token;
+    char *text = options;
+
+    while((token = strtok_r(text, " ", &text))) {
+	char *pval = strchr(token, '=');
+        if (pval) {
+            *pval = '\0';
+            pval++;
+            const gchar *property_name = (const gchar *) token;
+            const gchar *value = (const gchar *) pval;
+	    g_print("playbin_videosink property: \"%s\" \"%s\"\n", property_name, value);
+	    gst_util_set_object_arg(G_OBJECT (video_sink), property_name, value);
+        }
+    }
+    free(options);
+    return video_sink;
+}
+
 void video_renderer_init(logger_t *render_logger, const char *server_name, videoflip_t videoflip[2], const char *parser,
                           const char *decoder, const char *converter, const char *videosink, const char *videosink_options, 
                           bool initial_fullscreen, bool video_sync, bool h265_support) {
