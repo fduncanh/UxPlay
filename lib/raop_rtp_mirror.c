@@ -81,7 +81,7 @@ struct raop_rtp_mirror_s {
     raop_callbacks_t callbacks;
     raop_ntp_t *ntp;
 
-    /* Buffer to handle all resends */
+    /* mirror buffer for decryption */
     mirror_buffer_t *buffer;
 
     /* Remote address as sockaddr */

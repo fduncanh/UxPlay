@@ -275,7 +275,7 @@ void raop_buffer_handle_resends(raop_buffer_t *raop_buffer, raop_resend_cb_t res
     assert(resend_cb);
 
     if (seqnum_cmp(raop_buffer->first_seqnum, raop_buffer->last_seqnum) < 0) {
-        int seqnum, count;
+        unsigned short seqnum, count = 0;
         logger_log(raop_buffer->logger, LOGGER_DEBUG, "raop_buffer_handle_resends first_seqnum=%u last seqnum=%u",
                    raop_buffer->first_seqnum, raop_buffer->last_seqnum);
         for (seqnum = raop_buffer->first_seqnum; seqnum_cmp(seqnum, raop_buffer->last_seqnum) < 0; seqnum++) {
@@ -283,12 +283,11 @@ void raop_buffer_handle_resends(raop_buffer_t *raop_buffer, raop_resend_cb_t res
             if (entry->filled) {
                 break;
             }
+	    count++;
         }
-        if (seqnum_cmp(seqnum, raop_buffer->first_seqnum) == 0) {
-            return;
+        if (count){
+            resend_cb(opaque, raop_buffer->first_seqnum, count);
         }
-        count = seqnum_cmp(seqnum, raop_buffer->first_seqnum);
-        resend_cb(opaque, raop_buffer->first_seqnum, count);
     }
 }
 

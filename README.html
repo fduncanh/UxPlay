@@ -9,21 +9,14 @@ href="https://github.com/FDH2/UxPlay">https://github.com/FDH2/UxPlay</a>
 (where ALL user issues should be posted, and latest versions can be
 found).</strong></h3>
 <ul>
-<li><p><em><strong>NEW in v1.70</strong>: Support for 4k (h265) video
-with the new “-h265” option.</em> (Recent Apple devices will send HEVC
-(h265) video in AirPlay mirror mode if larger resolutions (<em>h</em>
-&gt; 1080) are requested with UxPlay’s “-s wxh” option; wired ethernet
+<li><em><strong>NEW in v1.70</strong>: Support for 4k (h265) video with
+the new “-h265” option.</em> (Recent Apple devices will send HEVC (h265)
+video in AirPlay mirror mode if larger resolutions (<em>h</em> &gt;
+1080) are requested with UxPlay’s “-s wxh” option; wired ethernet
 connection is prefered to wireless in this mode, and may also be
 required by the client; the “-h265” option changes the default
-resolution from 1920x1080 to 3840x2160, and leaves default maximum
-framerate at 30fps.)</p></li>
-<li><p><strong>An experimental (“beta”) version of UxPlay with support
-for HLS streaming of YouTube Videos from the YouTube app on an iOS
-client is now also available at</strong>
-https://github.com/FDH2/UxPlay/tree/video2, and this feature will be
-added in a future release of UxPlay. <em>See the <a
-href="https://github.com/FDH2/UxPlay/wiki/experimental-version-of-UxPlay-with-support-for-HLS-video-streaming-(you-tube-movies)">Wiki
-page</a> for details.</em></p></li>
+resolution from 1920x1080 to 3840x2160, but leaves default maximum
+framerate (“-fps” option) at 30fps.)</li>
 </ul>
 <h2 id="highlights">Highlights:</h2>
 <ul>
@@ -646,13 +639,11 @@ is present in Buster.</p></li>
 <li><p><strong>H265 (4K)</strong> video is supported with hardware
 decoding by the Broadcom GPU on Raspberry Pi 5 models, as well as on
 Raspberry Pi 4 model B. <strong>While GStreamer seem to make use of this
-hardware decoding, satisfactory rendering of 4K video by UxPlay on these
-Ras”pberry Pi models has not yet been acheived.</strong> The option
-“-h265” is required for actvating h265 support, as well as a resolution
-setting “-s wxh” with h &gt; 1080. A wired ethernet connection is
-preferred in this mode (and may be required by the client) “<em>4K video
-on Raspberry Pi is still a work in progress, and may require some
-redesign of the video pipeline.</em>”</p></li>
+hardware decoding, satisfactory rendering speed of 4K video by UxPlay on
+these Raspberry Pi models has not yet been acheived.</strong> The option
+“-h265” is required for activating h265 support. A wired ethernet
+connection is preferred in this mode (and may be required by the
+client).</p></li>
 </ul>
 <p>Even with GPU video decoding, some frames may be dropped by the
 lower-power models to keep audio and video synchronized using
@@ -738,13 +729,15 @@ href="https://formulae.brew.sh/formula/gstreamer#default">Homebrew
 gstreamer installation</a> has recently been reworked into a single
 “formula” named <code>gstreamer</code>, which now works without needing
 GST_PLUGIN_PATH to be set in the enviroment. Homebrew installs gstreamer
-to <code>(HOMEBREW)/lib/gstreamer-1.0</code> where
-<code>(HOMEBREW)/*</code> is <code>/opt/homebrew/*</code> on Apple
+to <code>HOMEBREW_PREFIX/lib/gstreamer-1.0</code> where by default
+<code>HOMEBREW_PREFIX/*</code> is <code>/opt/homebrew/*</code> on Apple
 Silicon Macs, and <code>/usr/local/*</code> on Intel Macs; do not put
 any extra non-Homebrew plugins (that you build yourself) there, and
 instead set GST_PLUGIN_PATH to point to their location (Homebrew does
 not supply a complete GStreamer, but seems to have everything needed for
-UxPlay).</p>
+UxPlay). <strong>New: the UxPlay build script will now also detect
+Homebrew installations in non-standard locations indicated by the
+environment variable <code>$HOMEBREW_PREFIX</code>.</strong></p>
 <p><strong>Using GStreamer installed from MacPorts</strong>: this is
 <strong>not</strong> recommended, as currently the MacPorts GStreamer is
 old (v1.16.2), unmaintained, and built to use X11:</p>
@@ -1581,8 +1574,9 @@ an AppleTV6,2 with sourceVersion 380.20.1 (an AppleTV 4K 1st gen,
 introduced 2017, running tvOS 12.2.1), so it does not seem to matter
 what version UxPlay claims to be.</p>
 <h1 id="changelog">Changelog</h1>
-<p>1.70 2024-09-17 Add support for 4K (h265) video (resolution 3840 x
-2160).</p>
+<p>1.70 2024-10-04 Add support for 4K (h265) video (resolution 3840 x
+2160). Fix issue with GStreamer &gt;= 1.24 when client sleeps, then
+wakes.</p>
 <p>1.69 2024-08-09 Internal improvements (e.g. in -nohold option,
 identifying GStreamer videosink selected by autovideosink, finding X11
 display) in anticipation of future HLS video support. New -nofreeze

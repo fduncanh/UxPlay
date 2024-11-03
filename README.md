@@ -5,12 +5,8 @@
    * _**NEW in v1.70**: Support for 4k (h265) video with the new "-h265" option._  (Recent Apple devices will send HEVC (h265) video in AirPlay mirror mode
    if larger resolutions (_h_ > 1080) are requested with UxPlay's "-s wxh" option;  wired ethernet connection is prefered to
    wireless in this mode, and may also be required by the client;
-   the "-h265" option changes the  default resolution from 1920x1080 to 3840x2160, and leaves default maximum framerate at 30fps.)
+   the "-h265" option changes the  default resolution from 1920x1080 to 3840x2160, but leaves default maximum framerate ("-fps" option) at 30fps.)
  
-   * **An experimental ("beta") version of UxPlay with support for HLS streaming of YouTube Videos from the YouTube
-   app on an iOS client is now also available at** https://github.com/FDH2/UxPlay/tree/video2, and this feature will be added in a future release of UxPlay.
-    _See the [Wiki page](https://github.com/FDH2/UxPlay/wiki/experimental-version-of-UxPlay-with-support-for-HLS-video-streaming-(you-tube-movies)) for details._
-
 ## Highlights:
 
    * GPLv3, open source.
@@ -511,11 +507,9 @@ See [Usage](#usage) for more run-time options.
   Raspberry Pi OS (Bullseye),  but is present in Buster.
 
 * **H265 (4K)** video is supported with hardware decoding by the Broadcom GPU on Raspberry Pi 5 models, as well as
-  on Raspberry Pi 4 model B.   **While GStreamer seem to make use of this hardware decoding, satisfactory rendering of
-  4K video by UxPlay on these Ras"pberry Pi models has not yet been acheived.**  The option "-h265" is required for actvating h265 support,
-  as well as a resolution setting "-s wxh" with h > 1080.
-  A wired ethernet connection is preferred in this mode (and may be required by the client)
-  "_4K video on Raspberry Pi is still a work in progress, and may require some redesign of the video pipeline._"
+  on Raspberry Pi 4 model B.   **While GStreamer seem to make use of this hardware decoding, satisfactory rendering speed of
+  4K video by UxPlay on these Raspberry Pi models has not yet been acheived.**  The option "-h265" is required for activating h265 support.
+  A wired ethernet connection is preferred in this mode (and may be required by the client).
 
 Even with GPU video decoding, some frames may be dropped by the lower-power models  to keep audio and video synchronized
 using timestamps.   In Legacy Raspberry Pi OS (Bullseye), raspi-config "Performance Options" allows specifying how much memory
@@ -582,10 +576,12 @@ binaries, which work without the wrapper.)
 This causes a large number of extra packages to be installed by Homebrew as dependencies.
 The [Homebrew gstreamer installation](https://formulae.brew.sh/formula/gstreamer#default) has recently been
 reworked into a single "formula" named `gstreamer`, which now works without needing  GST_PLUGIN_PATH to be
-set in the enviroment.  Homebrew installs gstreamer to `(HOMEBREW)/lib/gstreamer-1.0` where ``(HOMEBREW)/*`` is
+set in the enviroment.  Homebrew installs gstreamer to `HOMEBREW_PREFIX/lib/gstreamer-1.0` where by default ``HOMEBREW_PREFIX/*`` is
 `/opt/homebrew/*` on Apple Silicon Macs, and ``/usr/local/*`` on Intel Macs; do not put any
 extra non-Homebrew plugins (that you build yourself) there, and instead set GST_PLUGIN_PATH to point to
 their location (Homebrew does not supply a complete GStreamer, but seems to have everything needed for UxPlay).
+**New: the UxPlay build script will now also detect Homebrew installations in non-standard locations indicated by
+the environment variable `$HOMEBREW_PREFIX`.**
 
 
 **Using GStreamer installed from MacPorts**: this is **not** recommended, as currently the MacPorts GStreamer
@@ -1235,7 +1231,8 @@ tvOS 12.2.1), so it does not seem to matter what version UxPlay claims to be.
 
 
 # Changelog
-1.70 2024-09-17   Add support for 4K (h265) video (resolution 3840 x 2160).
+1.70 2024-10-04   Add support for 4K (h265) video (resolution 3840 x 2160).   Fix issue 
+                  with GStreamer >= 1.24 when client sleeps, then wakes.
 
 1.69 2024-08-09   Internal improvements (e.g. in -nohold option, identifying GStreamer videosink
                   selected by autovideosink, finding X11 display) in anticipation of future HLS video support.
