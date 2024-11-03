@@ -70,6 +70,8 @@ struct raop_s {
     unsigned short pin;
     bool use_pin;
 
+    bool hls_support;
+
     /* public key as string */
     char pk_str[2*ED25519_KEY_SIZE + 1];
 
@@ -194,9 +196,14 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
         return;
     }
 
+    const char *cseq = http_request_get_header(request, "CSeq");
+    /* if raop_hls_support is not activated, ignore reqests with no Cseq number (these are HLS requests) */
+    if (!cseq && !conn->raop->hls_support) {
+        return;
+    }
+
     const char *url = http_request_get_url(request);
     const char *protocol = http_request_get_protocol(request);
-    const char *cseq = http_request_get_header(request, "CSeq");
     const char *client_session_id = http_request_get_header(request, "X-Apple-Session-ID");
     const char *host = http_request_get_header(request, "Host");
     bool hls_request =  (host && !cseq && !client_session_id);
@@ -547,6 +554,9 @@ raop_init(raop_callbacks_t *callbacks) {
     raop->pin = 0;
     raop->use_pin = false;
 
+    /* initialize HLS support */
+    raop->hls_support = false;
+    
     /* initialize switch for display of client's streaming data records */    
     raop->clientFPSdata = 0;
 
@@ -667,6 +677,8 @@ int raop_set_plist(raop_t *raop, const char *plist_item, const int value) {
     } else if (strcmp(plist_item, "pin") == 0) {
         raop->pin = value;
         raop->use_pin = true;
+    } else if (strcmp(plist_item, "hls_support") == 0 && value == 1) {
+        raop->hls_support = true;
     } else {
         retval = -1;
     }	  

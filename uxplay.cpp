@@ -62,7 +62,7 @@
 #include "renderers/video_renderer.h"
 #include "renderers/audio_renderer.h"
 
-#define VERSION "1.70"
+#define VERSION "1.71"
 
 #define SECOND_IN_USECS 1000000
 #define SECOND_IN_NSECS 1000000000UL
@@ -142,6 +142,7 @@ static std::vector <std::string> registered_keys;
 static double db_low = -30.0;
 static double db_high = 0.0;
 static bool taper_volume = false;
+static bool hls_support = false;
 static bool h265_support = false;
 static int n_renderers = 0;
 
@@ -582,6 +583,7 @@ static void print_info (char *name) {
     printf("-n name   Specify the network name of the AirPlay server\n");
     printf("-nh       Do not add \"@hostname\" at the end of AirPlay server name\n");
     printf("-h265     Support h265 (4K) video (with h265 versions of h264 plugins)\n");
+    printf("-hls      Support HTTP Live Streaming (currently Youtube video only) \n");
     printf("-pin[xxxx]Use a 4-digit pin code to control client access (default: no)\n");
     printf("          default pin is random: optionally use fixed pin xxxx\n");
     printf("-reg [fn] Keep a register in $HOME/.uxplay.register to verify returning\n");
@@ -1145,6 +1147,8 @@ static void parse_arguments (int argc, char *argv[]) {
             db_low = db1;
             db_high = db2;
 	    printf("db range %f:%f\n", db_low, db_high);
+        } else if (arg == "-hls") {
+            hls_support = true;
         } else if (arg == "-h265") {
             h265_support = true;
         } else if (arg == "-nofreeze") {
@@ -1875,11 +1879,14 @@ static int start_raop_server (unsigned short display[5], unsigned short tcp[3], 
     if (display[3]) raop_set_plist(raop, "maxFPS", (int) display[3]);
     if (display[4]) raop_set_plist(raop, "overscanned", (int) display[4]);
 
+    /* using raop_set_plist to also set non-plist items */
     if (show_client_FPS_data) raop_set_plist(raop, "clientFPSdata", 1);
     raop_set_plist(raop, "max_ntp_timeouts", max_ntp_timeouts);
     if (audiodelay >= 0) raop_set_plist(raop, "audio_delay_micros", audiodelay);
     if (require_password) raop_set_plist(raop, "pin", (int) pin);
+    if (hls_support) raop_set_plist(raop, "hls_support", 1);
 
+    
     /* network port selection (ports listed as "0" will be dynamically assigned) */
     raop_set_tcp_ports(raop, tcp);
     raop_set_udp_ports(raop, udp);
