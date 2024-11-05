@@ -200,9 +200,6 @@ void video_renderer_init(logger_t *render_logger, const char *server_name, video
 
     hls_video = (uri != NULL);
 
-    GstClock *clock = gst_system_clock_obtain();
-    g_object_set(clock, "clock-type", GST_CLOCK_TYPE_REALTIME, NULL);
-
     /* videosink choices that are auto */
     auto_videosink = (strstr(videosink, "autovideosink") || strstr(videosink, "fpsdisplaysink"));
       
@@ -303,6 +300,8 @@ void video_renderer_init(logger_t *render_logger, const char *server_name, video
             }
             g_assert (renderer_type[i]->pipeline);
 
+            GstClock *clock = gst_system_clock_obtain();
+            g_object_set(clock, "clock-type", GST_CLOCK_TYPE_REALTIME, NULL);
             gst_pipeline_use_clock(GST_PIPELINE_CAST(renderer_type[i]->pipeline), clock);
             renderer_type[i]->appsrc = gst_bin_get_by_name (GST_BIN (renderer_type[i]->pipeline), "video_source");
             g_assert(renderer_type[i]->appsrc);
