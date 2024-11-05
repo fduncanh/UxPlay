@@ -143,6 +143,9 @@ static double db_low = -30.0;
 static double db_high = 0.0;
 static bool taper_volume = false;
 static bool hls_support = false;
+static std::string url = "";
+static guint gst_x11_window_id = 0;
+static bool preserve_connections = false;
 static bool h265_support = false;
 static int n_renderers = 0;
 
@@ -361,6 +364,16 @@ static gboolean reset_callback(gpointer loop) {
     return TRUE;
 }
 
+static gboolean x11_window_callback(gpointer loop) {
+    /* called while trying to find an x11 window used by playbin (HLS mode) */
+    if (waiting_for_x11_window()) {
+        return TRUE;
+    }
+    g_source_remove(gst_x11_window_id);
+    gst_x11_window_id = 0;
+    return FALSE;
+}
+
 static gboolean sigint_callback(gpointer loop) {
     relaunch_video = false;
     g_main_loop_quit((GMainLoop *) loop);
@@ -401,6 +414,15 @@ static void main_loop()  {
     relaunch_video = false;
     if (use_video) {
         relaunch_video = true;
+        if (url.empty()) {
+            n_renderers = h265_support ? 2 : 1;
+            gst_x11_window_id = 0;           
+        } else {
+            /* hls video will rendered */
+	    n_renderers = 1;
+            url.erase();
+            gst_x11_window_id = g_timeout_add(100, (GSourceFunc) x11_window_callback, (gpointer) loop);
+        }
         for (int i = 0; i < n_renderers; i++) {
             gst_bus_watch_id[i] = (guint) video_renderer_listen((void *)loop, i);
         }
@@ -415,6 +437,7 @@ static void main_loop()  {
     for (int i = 0; i < n_renderers; i++) {
         if (gst_bus_watch_id[i] > 0) g_source_remove(gst_bus_watch_id[i]);
     }
+    if (gst_x11_window_id > 0) g_source_remove(gst_x11_window_id);
     if (sigint_watch_id > 0) g_source_remove(sigint_watch_id);
     if (sigterm_watch_id > 0) g_source_remove(sigterm_watch_id);
     if (reset_watch_id > 0) g_source_remove(reset_watch_id);
@@ -1444,6 +1467,11 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
     dnssd_set_airplay_features(dnssd, 61, 0); // Supports RFC2198 redundancy
     */
 
+    /* needed for HLS video support */
+    dnssd_set_airplay_features(dnssd, 4, (int) hls_support);
+    // not sure about this one (bit 8, screen rotation supported):
+    //dnssd_set_airplay_features(dnssd, 8, (int) hls_support);
+    
     /* needed for h265 video support */
     dnssd_set_airplay_features(dnssd, 42, (int) h265_support);
     
@@ -1479,6 +1507,8 @@ static bool check_blocked_client(char *deviceid) {
 // Server callbacks
 
 extern "C" void video_reset(void *cls) {
+    LOGD("video_reset");
+    url.erase();
     reset_loop = true;
     remote_clock_offset = 0;
     relaunch_video = true;
@@ -1806,6 +1836,53 @@ extern "C" bool check_register(void *cls, const char *client_pk) {
     }
 }
 
+/* control  callbacks for video player */
+ 
+extern "C" void on_video_play(void *cls, const char* location, const float start_position) {
+    /* start_position needs to be implemented */
+    url.erase();
+    url.append(location);
+    reset_loop = true;
+    relaunch_video = true;
+    preserve_connections = true;
+    LOGD("on_video_play: location = %s", url.c_str());
+}
+
+extern "C" void on_video_scrub(void *cls, const float position) {
+    LOGI("on_video_scrub: position = %7.5f\n", position);
+    video_renderer_seek(position);
+}
+
+extern "C" void on_video_rate(void *cls, const float rate) {
+    LOGI("on_video_rate = %7.5f\n", rate);
+    if (rate == 1.0f) {
+        video_renderer_resume();
+    } else if (rate ==  0.0f) {
+        video_renderer_pause();
+    } else  {
+        LOGI("on_video_rate: ignoring unexpected value rate = %f\n", rate);
+    }
+}
+
+extern "C" void on_video_stop(void *cls) {
+    LOGI("on_video_stop\n");
+}
+
+extern "C" void on_video_acquire_playback_info (void *cls, playback_info_t *playback_info) {
+    int buffering_level;
+    LOGD("on_video_acquire_playback info\n");
+    bool still_playing = video_get_playback_info(&playback_info->duration, &playback_info->position,
+                                                 &playback_info->rate);
+    if (!still_playing) {
+        LOGI(" video has finished, %f", playback_info->position);
+        playback_info->position = -1.0;
+        playback_info->duration = -1.0;
+        printf("about to stop\n");
+        video_renderer_stop();
+        printf("stopped\n");
+    }
+}
+
 extern "C" void log_callback (void *cls, int level, const char *msg) {
     switch (level) {
         case LOGGER_DEBUG: {
@@ -1854,6 +1931,11 @@ static int start_raop_server (unsigned short display[5], unsigned short tcp[3], 
     raop_cbs.check_register = check_register;
     raop_cbs.export_dacp = export_dacp;
     raop_cbs.video_reset = video_reset;
+    raop_cbs.on_video_play = on_video_play;
+    raop_cbs.on_video_scrub = on_video_scrub;
+    raop_cbs.on_video_rate = on_video_rate;
+    raop_cbs.on_video_stop = on_video_stop;
+    raop_cbs.on_video_acquire_playback_info = on_video_acquire_playback_info;
     raop_cbs.video_set_codec = video_set_codec;
 
     raop = raop_init(&raop_cbs);
@@ -2157,10 +2239,9 @@ int main (int argc, char *argv[]) {
     }
 
     if (use_video) {
-        n_renderers = h265_support ? 2 : 1;
         video_renderer_init(render_logger, server_name.c_str(), videoflip, video_parser.c_str(),
                             video_decoder.c_str(), video_converter.c_str(), videosink.c_str(),
-                            videosink_options.c_str(),fullscreen, video_sync, h265_support);
+                            videosink_options.c_str(),fullscreen, video_sync, h265_support, NULL);
         video_renderer_start();
     }
 
@@ -2227,10 +2308,16 @@ int main (int argc, char *argv[]) {
         if (use_audio) audio_renderer_stop();
         if (use_video && close_window) {
             video_renderer_destroy();
-            raop_remove_known_connections(raop);
+	        if (!preserve_connections) {
+                raop_destroy_airplay_video(raop);
+                url.erase();
+                raop_remove_known_connections(raop);
+            }
+            preserve_connections = false;
+	    const char *uri = (url.empty() ? NULL : url.c_str());
             video_renderer_init(render_logger, server_name.c_str(), videoflip, video_parser.c_str(),
                                 video_decoder.c_str(), video_converter.c_str(), videosink.c_str(), 
-                                videosink_options.c_str(), fullscreen, video_sync, h265_support);
+                                videosink_options.c_str(), fullscreen, video_sync, h265_support, uri);
             video_renderer_start();
         }
         if (relaunch_video) {
