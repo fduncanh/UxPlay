@@ -57,6 +57,7 @@ struct video_renderer_s {
     bool autovideo, state_pending;
     int id;
     gint64 duration;
+    gint buffering_level;
 #ifdef  X_DISPLAY_FIX
     bool use_x11;
     const char * server_name;
@@ -521,6 +522,24 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
 	}
     }
     switch (GST_MESSAGE_TYPE (message)) {
+    case GST_MESSAGE_DURATION:
+        renderer->duration = GST_CLOCK_TIME_NONE;
+        break;
+    case GST_MESSAGE_BUFFERING:
+        if (hls_video) {
+            gint percent = -1;
+            gst_message_parse_buffering(message, &percent);
+	    if (percent >= 0) {
+                renderer->buffering_level = percent;
+                logger_log(logger, LOGGER_DEBUG, "Buffering :%u percent done", percent);
+                if (percent < 100) {
+                    gst_element_set_state (renderer->pipeline, GST_STATE_PAUSED);
+                } else {
+                    gst_element_set_state (renderer->pipeline, GST_STATE_PLAYING);
+                }
+            }
+        }
+	break;
     case GST_MESSAGE_ERROR: {
         GError *err;
         gchar *debug;
@@ -548,8 +567,13 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
     }
     case GST_MESSAGE_EOS:
       /* end-of-stream */
-         logger_log(logger, LOGGER_INFO, "GStreamer: End-Of-Stream");
-	//   g_main_loop_quit( (GMainLoop *) loop);
+        logger_log(logger, LOGGER_INFO, "GStreamer: End-Of-Stream");
+	if (hls_video) {
+            gst_bus_set_flushing(renderer->bus, TRUE);
+            gst_element_set_state (renderer->pipeline, GST_STATE_READY);
+	    video_terminate = TRUE;
+            g_main_loop_quit( (GMainLoop *) loop);
+        }
         break;
     case GST_MESSAGE_STATE_CHANGED:
         if (renderer_type[type]->state_pending && strstr(GST_MESSAGE_SRC_NAME(message), "pipeline")) {

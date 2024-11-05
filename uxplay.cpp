@@ -1468,6 +1468,7 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
     */
 
     /* needed for HLS video support */
+    dnssd_set_airplay_features(dnssd, 0, (int) hls_support);
     dnssd_set_airplay_features(dnssd, 4, (int) hls_support);
     // not sure about this one (bit 8, screen rotation supported):
     //dnssd_set_airplay_features(dnssd, 8, (int) hls_support);
