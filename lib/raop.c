@@ -230,36 +230,34 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
             httpd_set_connection_type(conn->raop->httpd, ptr, CONNECTION_TYPE_RAOP);
             conn->connection_type = CONNECTION_TYPE_RAOP;
         } else if (client_session_id) {
-            logger_log(conn->raop->logger, LOGGER_DEBUG, "New connection %p identified as Connection type AirPlay", ptr);            
+            logger_log(conn->raop->logger, LOGGER_DEBUG, "New connection %p identified as Connection type AirPlay", ptr);
             httpd_set_connection_type(conn->raop->httpd, ptr, CONNECTION_TYPE_AIRPLAY);
             conn->connection_type = CONNECTION_TYPE_AIRPLAY;
             size_t len = strlen(client_session_id) + 1;
             conn->client_session_id = (char *) malloc(len);
             strncpy(conn->client_session_id, client_session_id, len);
             /* airplay video has been requested: shut down any running RAOP udp services */
-	    raop_conn_t *raop_conn = (raop_conn_t *) httpd_get_connection_by_type(conn->raop->httpd, CONNECTION_TYPE_RAOP, 1);
-
-	    raop_rtp_mirror_t *raop_rtp_mirror = raop_conn->raop_rtp_mirror;
-	    if (raop_rtp_mirror) {
-                logger_log(conn->raop->logger, LOGGER_DEBUG, "New AirPlay connection: stopping RAOP mirror"
-                           " service on RAOP connection %p", raop_conn);
-                raop_rtp_mirror_stop(raop_rtp_mirror);
+            raop_conn_t *raop_conn = (raop_conn_t *) httpd_get_connection_by_type(conn->raop->httpd, CONNECTION_TYPE_RAOP, 1);
+            if (raop_conn) {
+                raop_rtp_mirror_t *raop_rtp_mirror = raop_conn->raop_rtp_mirror;
+                if (raop_rtp_mirror) {
+                    logger_log(conn->raop->logger, LOGGER_DEBUG, "New AirPlay connection: stopping RAOP mirror"
+                               " service on RAOP connection %p", raop_conn);
+                    raop_rtp_mirror_stop(raop_rtp_mirror);
+                }
+                raop_rtp_t *raop_rtp = raop_conn->raop_rtp;
+	        if (raop_rtp) {
+                    logger_log(conn->raop->logger, LOGGER_DEBUG, "New AirPlay connection: stopping RAOP audio"
+                               " service on RAOP connection %p", raop_conn);
+                    raop_rtp_stop(raop_rtp);
+                }
+                raop_ntp_t *raop_ntp = raop_conn->raop_ntp;
+                if (raop_rtp) {
+                    logger_log(conn->raop->logger, LOGGER_DEBUG, "New AirPlay connection: stopping NTP time"
+                               " service on RAOP connection %p", raop_conn);
+                    raop_ntp_stop(raop_ntp);
+                }
             }
-
-            raop_rtp_t *raop_rtp = raop_conn->raop_rtp;
-	    if (raop_rtp) {
-                logger_log(conn->raop->logger, LOGGER_DEBUG, "New AirPlay connection: stopping RAOP audio"
-                           " service on RAOP connection %p", raop_conn);
-                raop_rtp_stop(raop_rtp);
-            }
-
-            raop_ntp_t *raop_ntp = raop_conn->raop_ntp;
-	    if (raop_rtp) {
-                logger_log(conn->raop->logger, LOGGER_DEBUG, "New AirPlay connection: stopping NTP time"
-                           " service on RAOP connection %p", raop_conn);
-                raop_ntp_stop(raop_ntp);
-            }
-
         } else if (host) {
             logger_log(conn->raop->logger, LOGGER_DEBUG, "New connection %p identified as Connection type HLS", ptr);            
             httpd_set_connection_type(conn->raop->httpd, ptr, CONNECTION_TYPE_HLS);
