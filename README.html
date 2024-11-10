@@ -1,6 +1,6 @@
 <h1
-id="uxplay-1.69-airplay-mirror-and-airplay-audio-server-for-linux-macos-and-unix-now-also-runs-on-windows.">UxPlay
-1.69: AirPlay-Mirror and AirPlay-Audio server for Linux, macOS, and Unix
+id="uxplay-1.70-airplay-mirror-and-airplay-audio-server-for-linux-macos-and-unix-now-also-runs-on-windows.">UxPlay
+1.70: AirPlay-Mirror and AirPlay-Audio server for Linux, macOS, and Unix
 (now also runs on Windows).</h1>
 <h3
 id="now-developed-at-the-github-site-httpsgithub.comfdh2uxplay-where-all-user-issues-should-be-posted-and-latest-versions-can-be-found."><strong>Now
@@ -9,10 +9,14 @@ href="https://github.com/FDH2/UxPlay">https://github.com/FDH2/UxPlay</a>
 (where ALL user issues should be posted, and latest versions can be
 found).</strong></h3>
 <ul>
-<li><em><strong>NEW in v1.69</strong>: minor changes for users:
--nofreeze option to NOT leave frozen video in place when a network
-failure occurs; internal changes/improvements needed for planned future
-HLS video streaming support.</em></li>
+<li><em><strong>NEW in v1.70</strong>: Support for 4k (h265) video with
+the new “-h265” option.</em> (Recent Apple devices will send HEVC (h265)
+video in AirPlay mirror mode if larger resolutions (<em>h</em> &gt;
+1080) are requested with UxPlay’s “-s wxh” option; wired ethernet
+connection is prefered to wireless in this mode, and may also be
+required by the client; the “-h265” option changes the default
+resolution from 1920x1080 to 3840x2160, but leaves default maximum
+framerate (“-fps” option) at 30fps.)</li>
 </ul>
 <h2 id="highlights">Highlights:</h2>
 <ul>
@@ -82,8 +86,12 @@ with the option “uxplay -async”, but there is then a 2 second latency
 imposed by iOS.</p></li>
 <li><p>Add any UxPlay options you want to use as defaults to a startup
 file <code>~/.uxplayrc</code> (see “<code>man uxplay</code>” or
-“<code>uxplay -h</code>” for format and other possible
-locations).</p></li>
+“<code>uxplay -h</code>” for format and other possible locations). In
+particular, if your system uses PipeWire audio or Wayland video systems,
+you may wish to add “as pipewiresink” or “vs waylandsink” as defaults to
+the file. <em>(Output from terminal commands “ps waux | grep pulse” or
+“pactl info” will contain “pipewire” if your Linux/BSD system uses
+it).</em></p></li>
 <li><p>On Raspberry Pi: If you use Ubuntu 22.10 or earlier, GStreamer
 must be <a
 href="https://github.com/FDH2/UxPlay/wiki/Gstreamer-Video4Linux2-plugin-patches">patched</a>
@@ -173,8 +181,9 @@ without the accompanying video (there are plans to support HLS video in
 future releases of UxPlay)</strong></p></li>
 </ul>
 <h3
-id="possibility-for-using-hardware-accelerated-h264-video-decoding-if-available.">Possibility
-for using hardware-accelerated h264 video-decoding, if available.</h3>
+id="possibility-for-using-hardware-accelerated-h264h265-video-decoding-if-available.">Possibility
+for using hardware-accelerated h264/h265 video-decoding, if
+available.</h3>
 <p>UxPlay uses <a href="https://gstreamer.freedesktop.org">GStreamer</a>
 “plugins” for rendering audio and video. This means that video and audio
 are supported “out of the box”, using a choice of plugins. AirPlay
@@ -198,21 +207,29 @@ accelerated video decoding on the NVIDIA GPU after NVIDIA’s CUDA driver
 the plugin is called <code>nvdec</code>, and must be <a
 href="https://github.com/FDH2/UxPlay/wiki/NVIDIA-nvdec-and-nvenc-plugins">built
 by the user</a>.</p></li>
-<li><p><strong>Video4Linux2 support for the Raspberry Pi Broadcom 2835
-GPU (Pi 4B and older)</strong></p>
+<li><p><strong>Video4Linux2 support for h264 hardware decoding on
+Raspberry Pi (Pi 4B and older)</strong></p>
 <p>Raspberry Pi (RPi) computers (tested on Pi 4 Model B) can now run
-UxPlay using software video decoding, but hardware-accelerated decoding
-by firmware in the Pi’s GPU is prefered. UxPlay accesses this using the
-GStreamer-1.22 Video4Linux2 (v4l2) plugin; the plugin from older
-GStreamer &lt; 1.22 needs a backport patch (already partially applied in
-Raspberry Pi OS (Bullseye), available for 1.18.4 and later in the <a
+UxPlay using software video decoding, but hardware-accelerated h264/h265
+decoding by firmware in the Pi’s Broadcom 2835 GPU is prefered. UxPlay
+accesses this using the GStreamer-1.22 Video4Linux2 (v4l2) plugin; Uses
+the out-of-mainline Linux kernel module bcm2835-codec maintained by
+Raspberry Pi, so far only included in Raspberry Pi OS, and two other
+distributions (Ubuntu, Manjaro) available with Raspberry Pi Imager.
+<em>(For GStreamer &lt; 1.22, see the <a
 href="https://github.com/FDH2/UxPlay/wiki/Gstreamer-Video4Linux2-plugin-patches">UxPlay
-Wiki</a>). Also requires the out-of-mainline Linux kernel module
-bcm2835-codec maintained by Raspberry Pi, so far only included in
-Raspberry Pi OS, and two other distributions (Ubuntu, Manjaro) available
-with Raspberry Pi Imager. <em>Note: The latest Raspberry Pi model 5 does
-not provide hardware-accelerated (GPU) H264 decoding as its CPU is
-powerful enough for satisfactory software decoding.</em></p></li>
+Wiki</a>)</em>. Pi model 5 has no support for hardware H264 decoding, as
+its CPU is powerful enough for satisfactory software H264
+decoding</p></li>
+<li><p><strong>Support for h265 (HEVC) hardware decoding on Raspberry Pi
+(Pi 4 model B and Pi 5)</strong></p>
+<p>These Raspberry Pi models have a dedicated HEVC decoding block (not
+the GPU), with a driver “rpivid” which is not yet in the mainline Linux
+kernel (but is planned to be there in future). Unfortunately it produces
+decoded video in a non-standard pixel format (NC30 or “SAND”) which will
+not be supported by GStreamer until the driver is in the mainline
+kernel; without this support, UxPlay support for HEVC hardware decoding
+on Raspberry Pi will not work.</p></li>
 </ul>
 <h3 id="note-to-packagers">Note to packagers:</h3>
 <p>UxPlay’s GPLv3 license does not have an added “GPL exception”
@@ -373,9 +390,10 @@ PCLinuxOS; it can be easily modified to include dependency lists for
 other RPM-based distributions.)</p>
 <h2 id="running-uxplay">Running UxPlay</h2>
 <h3
-id="installing-plugins-debian-based-linux-systems-skip-if-you-built-a-complete-gstreamer-from-source">Installing
-plugins (Debian-based Linux systems) (<em>skip if you built a complete
-GStreamer from source</em>)</h3>
+id="installing-plugins-debian-based-linux-distributions-including-ubuntu-and-raspberry-pi-os-skip-if-you-built-a-complete-gstreamer-from-source">Installing
+plugins (Debian-based Linux distributions, including Ubuntu and
+Raspberry Pi OS) (<em>skip if you built a complete GStreamer from
+source</em>)</h3>
 <p>Next install the GStreamer plugins that are needed with
 <code>sudo apt install gstreamer1.0-&lt;plugin&gt;</code>. Values of
 <code>&lt;plugin&gt;</code> required are:</p>
@@ -386,11 +404,13 @@ GStreamer from source</em>)</h3>
 decoding)</li>
 <li>“<strong>plugins-bad</strong>” (for h264 decoding).</li>
 </ol>
-<p>Plugins that may also be needed include “<strong>gl</strong>” for
-OpenGL support (this provides the “-vs glimagesink” videosink, which can
-be very useful in many systems, and should always be used when using
-h264 decoding by a NVIDIA GPU), “<strong>gtk3</strong>” (which provides
-the “-vs gtksink” videosink), and “<strong>x</strong>” for X11 support,
+<p><strong>Debian-based distributions split some of the plugin packages
+into smaller pieces:</strong> some that may also be needed include
+“<strong>gl</strong>” for OpenGL support (this provides the “-vs
+glimagesink” videosink, which can be very useful in many systems
+(including Raspberry Pi), and should always be used when using h264/h265
+decoding by a NVIDIA GPU), “<strong>gtk3</strong>” (which provides the
+“-vs gtksink” videosink), and “<strong>x</strong>” for X11 support,
 although these may already be installed; “<strong>vaapi</strong>” is
 needed for hardware-accelerated h264 video decoding by Intel or AMD
 graphics (but not for use with NVIDIA using proprietary drivers). If
@@ -621,6 +641,17 @@ GPU with the GStreamer OMX plugin (use option
 “<code>-vd omxh264dec</code>”), but this is broken by Pi 4 Model B
 firmware. OMX support was removed from Raspberry Pi OS (Bullseye), but
 is present in Buster.</p></li>
+<li><p><strong>H265 (4K)</strong> video is potentially supported by
+hardware decoding on Raspberry Pi 5 models, as well as on Raspberry Pi 4
+model B, using a dedicated HEVC decoding block, but the “rpivid” kernel
+driver for this it not yet supported by GStreamer (this driver decodes
+video into a non-standard format that cannot be supported by GStreamer
+until the driver is in the mainline Linux kernel). Raspberry Pi provides
+a version of ffmpeg that can use that format, but at present UxPlay
+cannot use this. The best solution would be for the driver to be
+“upstreamed” to the kernel, allowing GStreamer support. (Software HEVC
+decoding works, but does not seem to give satisfactory results on the
+Pi).</p></li>
 </ul>
 <p>Even with GPU video decoding, some frames may be dropped by the
 lower-power models to keep audio and video synchronized using
@@ -706,13 +737,15 @@ href="https://formulae.brew.sh/formula/gstreamer#default">Homebrew
 gstreamer installation</a> has recently been reworked into a single
 “formula” named <code>gstreamer</code>, which now works without needing
 GST_PLUGIN_PATH to be set in the enviroment. Homebrew installs gstreamer
-to <code>(HOMEBREW)/lib/gstreamer-1.0</code> where
-<code>(HOMEBREW)/*</code> is <code>/opt/homebrew/*</code> on Apple
+to <code>HOMEBREW_PREFIX/lib/gstreamer-1.0</code> where by default
+<code>HOMEBREW_PREFIX/*</code> is <code>/opt/homebrew/*</code> on Apple
 Silicon Macs, and <code>/usr/local/*</code> on Intel Macs; do not put
 any extra non-Homebrew plugins (that you build yourself) there, and
 instead set GST_PLUGIN_PATH to point to their location (Homebrew does
 not supply a complete GStreamer, but seems to have everything needed for
-UxPlay).</p>
+UxPlay). <strong>New: the UxPlay build script will now also detect
+Homebrew installations in non-standard locations indicated by the
+environment variable <code>$HOMEBREW_PREFIX</code>.</strong></p>
 <p><strong>Using GStreamer installed from MacPorts</strong>: this is
 <strong>not</strong> recommended, as currently the MacPorts GStreamer is
 old (v1.16.2), unmaintained, and built to use X11:</p>
@@ -901,6 +934,18 @@ the mirror display (X11) window.</p>
 <p><strong>-nh</strong> Do not append “<span class="citation"
 data-cites="_hostname_">@_hostname_</span>” at the end of the AirPlay
 server name.</p>
+<p><strong>-h265</strong> Activate “ScreenMultiCodec” support (AirPlay
+“Features” bit 42) for accepting h265 (4K/HEVC) video in addition to
+h264 video (1080p) in screen-mirror mode. When this option is used, two
+“video pipelines” (one for h264, one for h265) are created. If any
+GStreamer plugins in the pipeline are specific for h264 or h265, the
+correct version will be used in each pipeline. A wired Client-Server
+ethernet connection is preferred over Wifi for 4K video, and might be
+required by the client. Only recent Apple devices (M1/M2 Macs or iPads,
+and some iPhones) can send h265 video if a resolut “-s wxh” with h &gt;
+1080 is requested. The “-h265” option changes the default resolution
+(“-s” option) from 1920x1080 to 3840x2160, and leaves default maximum
+framerate (“-fps” option) at 30fps.</p>
 <p><strong>-pin [nnnn]</strong>: (since v1.67) use Apple-style
 (one-time) “pin” authentication when a new client connects for the first
 time: a four-digit pin code is displayed on the terminal, and the client
@@ -974,10 +1019,11 @@ each time the length of the volume slider (or the number of steps above
 mute, where 16 steps = full volume) is reduced by 50%, the perceived
 volume is halved (a 10dB attenuation). (This is modified at low volumes,
 to use the “untapered” volume if it is louder.)</p>
-<p><strong>-s wxh</strong> (e.g. -s 1920x1080 , which is the default )
-sets the display resolution (width and height, in pixels). (This may be
+<p><strong>-s wxh</strong> e.g. -s 1920x1080 (= “1080p”), the default
+width and height resolutions in pixels for h264 video. (The default
+becomes 3840x2160 (= “4K”) when the -h265 option is used.) This is just
 a request made to the AirPlay client, and perhaps will not be the final
-resolution you get.) w and h are whole numbers with four digits or less.
+resolution you get. w and h are whole numbers with four digits or less.
 Note that the <strong>height</strong> pixel size is the controlling one
 used by the client for determining the streaming format; the width is
 dynamically adjusted to the shape of the image (portrait or landscape
@@ -1251,9 +1297,13 @@ that your network <strong>does not have a running Bonjour/zeroconf
 DNS-SD server.</strong> Before v1.60, UxPlay used to stall silently if
 DNS-SD service registration failed, but now stops with an error message
 returned by the DNSServiceRegister function: kDNSServiceErr_Unknown if
-no DNS-SD server was found: other mDNS error codes are in the range FFFE
-FF00 (-65792) to FFFE FFFF (-65537), and are listed in the dnssd.h file.
-An older version of this (the one used by avahi) is found <a
+no DNS-SD server was found: <em>(A NixOS user found that in NixOS, this
+error can also occur if avahi-daemon service IS running with publishing
+enabled, but reports “the error disappeared on NixOS by setting
+services.avahi.openFirewall to true”.)</em> Other mDNS error codes are
+in the range FFFE FF00 (-65792) to FFFE FFFF (-65537), and are listed in
+the dnssd.h file. An older version of this (the one used by avahi) is
+found <a
 href="https://github.com/lathiat/avahi/blob/master/avahi-compat-libdns_sd/dns_sd.h">here</a>.
 A few additional error codes are defined in a later version from <a
 href="https://opensource.apple.com/source/mDNSResponder/mDNSResponder-544/mDNSShared/dns_sd.h.auto.html">Apple</a>.</p>
@@ -1532,6 +1582,9 @@ an AppleTV6,2 with sourceVersion 380.20.1 (an AppleTV 4K 1st gen,
 introduced 2017, running tvOS 12.2.1), so it does not seem to matter
 what version UxPlay claims to be.</p>
 <h1 id="changelog">Changelog</h1>
+<p>1.70 2024-10-04 Add support for 4K (h265) video (resolution 3840 x
+2160). Fix issue with GStreamer &gt;= 1.24 when client sleeps, then
+wakes.</p>
 <p>1.69 2024-08-09 Internal improvements (e.g. in -nohold option,
 identifying GStreamer videosink selected by autovideosink, finding X11
 display) in anticipation of future HLS video support. New -nofreeze
