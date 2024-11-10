@@ -1614,7 +1614,7 @@ extern "C" void audio_process (void *cls, raop_ntp_t *ntp, audio_decode_struct *
     }
 }
 
-extern "C" void video_process (void *cls, raop_ntp_t *ntp, h264_decode_struct *data) {
+extern "C" void video_process (void *cls, raop_ntp_t *ntp, video_decode_struct *data) {
     if (dump_video) {
         dump_video_to_file(data->data, data->data_len);
     }

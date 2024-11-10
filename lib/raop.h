@@ -54,11 +54,17 @@ typedef struct playback_info_s {
     void *seekableTimeRanges;
 } playback_info_t;
   
+typedef enum video_codec_e {
+    VIDEO_CODEC_UNKNOWN,
+    VIDEO_CODEC_H264,
+    VIDEO_CODEC_H265
+} video_codec_t;
+
 struct raop_callbacks_s {
     void* cls;
 
     void  (*audio_process)(void *cls, raop_ntp_t *ntp, audio_decode_struct *data);
-    void  (*video_process)(void *cls, raop_ntp_t *ntp, h264_decode_struct *data);
+    void  (*video_process)(void *cls, raop_ntp_t *ntp, video_decode_struct *data);
     void  (*video_pause)(void *cls);
     void  (*video_resume)(void *cls);
 
@@ -82,7 +88,7 @@ struct raop_callbacks_s {
     bool  (*check_register) (void *cls, const char *pk_str);
     void  (*export_dacp) (void *cls, const char *active_remote, const char *dacp_id);
     void  (*video_reset) (void *cls);
-
+    void  (*video_set_codec)(void *cls, video_codec_t codec);
     /* for HLS video player controls */
     void  (*on_video_play) (void *cls, const char *location, const float start_position);
     void  (*on_video_scrub) (void *cls, const float position);
