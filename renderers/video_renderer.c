@@ -33,33 +33,43 @@ static bool alt_keypress = false;
 static unsigned char X11_search_attempts;
 #endif
 
-static video_renderer_t *renderer = NULL;
 static GstClockTime gst_video_pipeline_base_time = GST_CLOCK_TIME_NONE;
 static logger_t *logger = NULL;
-static bool logger_debug;
 static unsigned short width, height, width_source, height_source;  /* not currently used */
 static bool first_packet = false;
 static bool sync = false;
-static bool auto_videosink;
+static bool auto_videosink = true;
 static bool hls_video = false;
 #ifdef X_DISPLAY_FIX
 static bool use_x11 = false;
 #endif
-static bool playbin3;
+static bool logger_debug = false;
+static bool video_terminate = false;
 
+#define NCODECS  2   /* renderers for h264 and h265 */
 
 struct video_renderer_s {
     GstElement *appsrc, *pipeline;
     GstBus *bus;
-  // gboolean playing, terminate, seek_enabled, seek_done;
+    const char *codec;
+    bool autovideo, state_pending;
+    int id;
     gboolean terminate;
     gint64 duration;
     gint buffering_level;
 #ifdef  X_DISPLAY_FIX
+    bool use_x11;
     const char * server_name;
     X11_Window_t * gst_window;
 #endif
 };
+
+static video_renderer_t *renderer = NULL;
+static video_renderer_t *renderer_type[NCODECS] = {0};
+static int n_renderers = NCODECS;
+static char h264[] = "h264";
+static char h265[] = "h265";
+static char hls[] = "hls";
 
 static void append_videoflip (GString *launch, const videoflip_t *flip, const videoflip_t *rot) {
     /* videoflip image transform */
@@ -129,6 +139,7 @@ static void append_videoflip (GString *launch, const videoflip_t *flip, const vi
  * range = 2 -> GST_VIDEO_COLOR_RANGE_16_235 ("limited RGB")     */  
 
 static const char h264_caps[]="video/x-h264,stream-format=(string)byte-stream,alignment=(string)au";
+static const char h265_caps[]="video/x-h265,stream-format=(string)byte-stream,alignment=(string)au";
 
 void video_renderer_size(float *f_width_source, float *f_height_source, float *f_width, float *f_height) {
     width_source = (unsigned short) *f_width_source;
@@ -138,38 +149,35 @@ void video_renderer_size(float *f_width_source, float *f_height_source, float *f
     logger_log(logger, LOGGER_DEBUG, "begin video stream wxh = %dx%d; source %dx%d", width, height, width_source, height_source);
 }
 
-GstElement *make_video_sink(const char *videosink) {
+GstElement *make_video_sink(const char *videosink, const char *videosink_options) {
   /* used to build a videosink for playbin, using the user-specified string "videosink" */ 
-    GstElement *video_sink = NULL;
-    size_t len = strlen(videosink);
-    char *videosink_cpy = (char *) malloc(len + 1);
-    strncpy(videosink_cpy, videosink, len + 1);
+    GstElement *video_sink = gst_element_factory_make(videosink, "videosink");
+    if (!video_sink) {
+        return NULL;
+    }
+
+    /* process the video_sink_optons */
+    size_t len = strlen(videosink_options);
+    if (!len) {
+        return video_sink;
+    }
+
+    char *options  = (char *) malloc(len + 1);
+    strncpy(options, videosink_options, len + 1);
 
     /* remove any extension begining with "!" */
-    char *end = strstr(videosink_cpy, "!");
+    char *end = strchr(options, '!');
     if (end) {   
       *end = '\0';
     }
 
-    /* split videosink string into the sink name and any options */
+    /* add any fullscreen options "property=pval" included in string videosink_options*/    
+    /* OK to use strtok_r in Windows with MSYS2 (POSIX); use strtok_s for MSVC */
     char *token;
-    char *saveptr;
+    char *text = options;
 
-    /* OK in Windows with MSYS2  (POSIX); use strtok_s for MSVC */
-    token = strtok_r(videosink_cpy, " ", &saveptr);
-    video_sink = gst_element_factory_make(token, "videosink");
-    g_print("playbin_videosink: \"%s\"\n", token);
-    if (!video_sink) {
-        return NULL;
-    }
-    
-    /* add any fullscreen options "property=pval" included in string videosink*/
-    while (1) {
-        token = strtok_r(NULL, " ", &saveptr);
-        if (!token) {
-            break;
-        }
-        char *pval = strstr(token, "=");
+    while((token = strtok_r(text, " ", &text))) {
+	char *pval = strchr(token, '=');
         if (pval) {
             *pval = '\0';
             pval++;
@@ -179,29 +187,23 @@ GstElement *make_video_sink(const char *videosink) {
 	    gst_util_set_object_arg(G_OBJECT (video_sink), property_name, value);
         }
     }
-    free(videosink_cpy);
+    free(options);
     return video_sink;
 }
 
 void  video_renderer_init(logger_t *render_logger, const char *server_name, videoflip_t videoflip[2], const char *parser,
-                          const char *decoder, const char *converter, const char *videosink, const bool *initial_fullscreen,
-                          const bool *video_sync, const char *uri) {
+                          const char *decoder, const char *converter, const char *videosink, const char *videosink_options, 
+                          bool initial_fullscreen, bool video_sync, bool h265_support, const char *uri) {
     GError *error = NULL;
     GstCaps *caps = NULL;
-#ifdef GST_124
-    playbin3 = true;
-#else
-    playbin3 = true;
-#endif
-    
-    GstClock *clock = gst_system_clock_obtain();
-    g_object_set(clock, "clock-type", GST_CLOCK_TYPE_REALTIME, NULL);
+    hls_video = (uri != NULL);
     /* videosink choices that are auto */
     auto_videosink = (strstr(videosink, "autovideosink") || strstr(videosink, "fpsdisplaysink"));
 
     logger = render_logger;
     logger_debug = (logger_get_level(logger) >= LOGGER_DEBUG);
-
+    video_terminate = false;
+    
     /* this call to g_set_application_name makes server_name appear in the  X11 display window title bar, */
     /* (instead of the program name uxplay taken from (argv[0]). It is only set one time. */
 
@@ -209,149 +211,188 @@ void  video_renderer_init(logger_t *render_logger, const char *server_name, vide
     if (!appname || strcmp(appname,server_name))  g_set_application_name(server_name);
     appname = NULL;
 
-    renderer = calloc(1, sizeof(video_renderer_t));
-    g_assert(renderer);
-    renderer->duration = GST_CLOCK_TIME_NONE;
-    renderer->buffering_level = 0;
-    renderer->terminate = FALSE;
-
-    if (!uri) {
-        hls_video  = false;
-        GString *launch = g_string_new("appsrc name=video_source ! ");
-        g_string_append(launch, "queue ! ");
-        g_string_append(launch, parser);
-        g_string_append(launch, " ! ");
-        g_string_append(launch, decoder);
-        g_string_append(launch, " ! ");
-        append_videoflip(launch, &videoflip[0], &videoflip[1]);
-        g_string_append(launch, converter);
-        g_string_append(launch, " ! ");
-        g_string_append(launch, "videoscale ! ");
-        g_string_append(launch, videosink);
-        if (*video_sync) {
-            g_string_append(launch, " sync=true");
-            sync = true;
-        } else {
-            g_string_append(launch, " sync=false");
-            sync = false;
-        }
-        logger_log(logger, LOGGER_DEBUG, "GStreamer mirror video pipeline will be:\n\"%s\"", launch->str);
-        renderer->pipeline = gst_parse_launch(launch->str, &error);
-        if (error) {
-            g_error ("get_parse_launch error (video) :\n %s\n",error->message);
-            g_clear_error (&error);
-        }
-        g_assert (renderer->pipeline);
-        gst_pipeline_use_clock(GST_PIPELINE_CAST(renderer->pipeline), clock);
-
-        renderer->appsrc = gst_bin_get_by_name (GST_BIN (renderer->pipeline), "video_source");
-        g_assert(renderer->appsrc);
-        caps = gst_caps_from_string(h264_caps);
-        g_object_set(renderer->appsrc, "caps", caps, "stream-type", 0, "is-live", TRUE, "format", GST_FORMAT_TIME, NULL);
-        g_string_free(launch, TRUE);
-        gst_caps_unref(caps);
-        gst_object_unref(clock);
+    /* the renderer for hls video will only be built if a HLS uri is provided in 
+     * the call to video_renderer_init, in which case the h264 and 265 mirror-mode 
+     * renderers will not be built.   This is because it appears that we cannot  
+     * put playbin into GST_STATE_READY before knowing the uri (?), so cannot use a
+     * unified renderer structure with h264, h265 and hls  */  
+    if (hls_video) {
+        n_renderers = 1;
     } else {
-        hls_video = true;
-        if (playbin3) {
-            /* use playbin3 with GStreamer >= 1.24 */
-	    logger_log(logger, LOGGER_DEBUG, "********************************************GStreamer HLS video pipeline will use playbin3");
-            renderer->pipeline = gst_element_factory_make("playbin3", "hls-playbin3");
-	} else {
-            renderer->pipeline = gst_element_factory_make("playbin", "hls-playbin");
-            logger_log(logger, LOGGER_DEBUG, "********************************************GStreamer HLS video pipeline will use playbin");
-        }
-        g_assert(renderer->pipeline);
-	renderer->appsrc = NULL;
-        /* if we are not using autovideosink, build a videossink based on the stricng "videosink" */
-        if(strcmp(videosink, "autovideosink")) {
-            GstElement *playbin_videosink = make_video_sink(videosink);
-            if (!playbin_videosink) {
-                logger_log(logger, LOGGER_ERR, "video_renderer_init: failed to create playbin_videosink");
-           } else {
-                logger_log(logger, LOGGER_INFO, "video_renderer_init: create playbin_videosink at %p", playbin_videosink);
-                g_object_set(G_OBJECT (renderer->pipeline), "video-sink", playbin_videosink, NULL);
-                gst_object_unref(playbin_videosink);
+        n_renderers = h265_support ? 2 : 1;
+    }
+    g_assert (n_renderers <= NCODECS);
+    for (int i = 0; i < n_renderers; i++) {
+        g_assert (i < 2);
+        renderer_type[i] = (video_renderer_t *) calloc(1, sizeof(video_renderer_t));
+        g_assert(renderer_type[i]);
+        renderer_type[i]->autovideo = auto_videosink;
+	renderer_type[i]->id = i;
+	renderer_type[i]->bus = NULL;
+        if (hls_video) {
+            /* use playbin3 to play HLS video: replace "playbin3" by "playbin" to use playbin2 */ 
+            renderer_type[i]->pipeline = gst_element_factory_make("playbin3", "hls-playbin3");
+            g_assert(renderer_type[i]->pipeline);
+            renderer_type[i]->appsrc = NULL;
+	    renderer_type[i]->codec = hls;
+            /* if we are not using autovideosink, build a videossink based on the stricng "videosink" */
+            if(strcmp(videosink, "autovideosink")) {
+	      GstElement *playbin_videosink = make_video_sink(videosink, videosink_options);
+	      
+                if (!playbin_videosink) {
+                    logger_log(logger, LOGGER_ERR, "video_renderer_init: failed to create playbin_videosink");
+                } else {
+                    logger_log(logger, LOGGER_INFO, "video_renderer_init: create playbin_videosink at %p", playbin_videosink);
+                    g_object_set(G_OBJECT (renderer_type[i]->pipeline), "video-sink", playbin_videosink, NULL);
+                    gst_object_unref(playbin_videosink);
+                }
+            }
+
+            g_object_set (G_OBJECT (renderer_type[i]->pipeline), "uri", uri, NULL);
+        } else {
+            switch (i) {
+            case 0:
+                renderer_type[i]->codec = h264;
+                caps = gst_caps_from_string(h264_caps);
+                break;
+            case 1:
+                renderer_type[i]->codec = h265;
+                caps = gst_caps_from_string(h265_caps);
+                break;
+            default:
+                g_assert(0);
+            }
+            GString *launch = g_string_new("appsrc name=video_source ! ");
+            g_string_append(launch, "queue ! ");
+            g_string_append(launch, parser);
+            g_string_append(launch, " ! ");
+            g_string_append(launch, decoder);
+            g_string_append(launch, " ! ");
+            append_videoflip(launch, &videoflip[0], &videoflip[1]);
+            g_string_append(launch, converter);
+            g_string_append(launch, " ! ");
+            g_string_append(launch, "videoscale ! ");
+            g_string_append(launch, videosink);
+            g_string_append(launch, " name=");
+            g_string_append(launch, videosink);
+            g_string_append(launch, "_");
+            g_string_append(launch, renderer_type[i]->codec);
+            g_string_append(launch, videosink_options);
+            if (video_sync) {
+                g_string_append(launch, " sync=true");
+                sync = true;
+            } else {
+                g_string_append(launch, " sync=false");
+                sync = false;
+            }
+
+            if (!strcmp(renderer_type[i]->codec, h265)) {
+                g_string_replace (launch, (const gchar *) h264,  (const gchar *) h265, 0);
+            } else {
+                g_string_replace (launch, (const gchar *) h265,  (const gchar *) h264, 0);
+            }
+
+            logger_log(logger, LOGGER_DEBUG, "GStreamer video pipeline %d:\n\"%s\"", i + 1, launch->str);
+            renderer_type[i]->pipeline = gst_parse_launch(launch->str, &error);
+            if (error) {
+                g_error ("get_parse_launch error (video) :\n %s\n",error->message);
+                g_clear_error (&error);
+            }
+            g_assert (renderer_type[i]->pipeline);
+
+            GstClock *clock = gst_system_clock_obtain();
+            g_object_set(clock, "clock-type", GST_CLOCK_TYPE_REALTIME, NULL);
+            gst_pipeline_use_clock(GST_PIPELINE_CAST(renderer_type[i]->pipeline), clock);
+            renderer_type[i]->appsrc = gst_bin_get_by_name (GST_BIN (renderer_type[i]->pipeline), "video_source");
+            g_assert(renderer_type[i]->appsrc);
+
+            g_object_set(renderer_type[i]->appsrc, "caps", caps, "stream-type", 0, "is-live", TRUE, "format", GST_FORMAT_TIME, NULL);
+            g_string_free(launch, TRUE);
+            gst_caps_unref(caps);
+	    gst_object_unref(clock);
+        }	
+#ifdef X_DISPLAY_FIX
+        use_x11 = (strstr(videosink, "xvimagesink") || strstr(videosink, "ximagesink") || auto_videosink);
+        fullscreen = initial_fullscreen;
+        renderer_type[i]->server_name = server_name;
+        renderer_type[i]->gst_window = NULL;
+        renderer_type[i]->use_x11 = false;
+        X11_search_attempts = 0;
+        if (use_x11) {
+            if (i == 0) {
+                renderer_type[0]->gst_window = (X11_Window_t *) calloc(1, sizeof(X11_Window_t));
+                g_assert(renderer_type[0]->gst_window);
+                get_X11_Display(renderer_type[0]->gst_window);
+                if (renderer_type[0]->gst_window->display) {
+                    renderer_type[i]->use_x11 = true;
+                } else {
+                    free(renderer_type[0]->gst_window);
+                    renderer_type[0]->gst_window = NULL;
+                }
+            } else if (renderer_type[0]->use_x11) {
+                renderer_type[i]->gst_window = (X11_Window_t *) calloc(1, sizeof(X11_Window_t));
+                g_assert(renderer_type[i]->gst_window);
+                memcpy(renderer_type[i]->gst_window, renderer_type[0]->gst_window, sizeof(X11_Window_t));
+                renderer_type[i]->use_x11 = true;
             }
         }
-        g_object_set (G_OBJECT (renderer->pipeline), "uri", uri, NULL);
-    }
-#ifdef X_DISPLAY_FIX
-    use_x11 = (strstr(videosink, "xvimagesink") || strstr(videosink, "ximagesink") || auto_videosink);
-    fullscreen = *initial_fullscreen;
-    renderer->server_name = server_name;
-    renderer->gst_window = NULL;
-    bool x_display_fix = false;
-    X11_search_attempts = 0; 
-    if (use_x11) {
-        renderer->gst_window = calloc(1, sizeof(X11_Window_t));
-        g_assert(renderer->gst_window);
-        get_X11_Display(renderer->gst_window);
-        if (!renderer->gst_window->display) {
-            free(renderer->gst_window);
-            renderer->gst_window = NULL;
-        }
-    }
 #endif
-    gst_element_set_state (renderer->pipeline, GST_STATE_READY);
-    GstState state;
-    if (gst_element_get_state (renderer->pipeline, &state, NULL, 0)) {
-        if (state == GST_STATE_READY) {
-            logger_log(logger, LOGGER_DEBUG, "Initialized GStreamer video renderer");
+        gst_element_set_state (renderer_type[i]->pipeline, GST_STATE_READY);
+        GstState state;
+        if (gst_element_get_state (renderer_type[i]->pipeline, &state, NULL, 0)) {
+            if (state == GST_STATE_READY) {
+                logger_log(logger, LOGGER_DEBUG, "Initialized GStreamer video renderer %d", i + 1);
+                if (hls_video && i == 0) {
+                    renderer = renderer_type[i];
+                }
+            } else {
+                logger_log(logger, LOGGER_ERR, "Failed to initialize GStreamer video renderer %d", i + 1);
+            }
         } else {
-            logger_log(logger, LOGGER_ERR, "Failed to initialize GStreamer video renderer");
+            logger_log(logger, LOGGER_ERR, "Failed to initialize GStreamer video renderer %d", i + 1);
         }
-    } else {
-        logger_log(logger, LOGGER_ERR, "Failed to initialize GStreamer video renderer");
     }
 }
 
 void video_renderer_pause() {
+    if (!renderer) {
+        return;
+    }
     logger_log(logger, LOGGER_DEBUG, "video renderer paused");
     gst_element_set_state(renderer->pipeline, GST_STATE_PAUSED);
 }
 
 void video_renderer_resume() {
-    if (video_renderer_is_paused()) {
-        logger_log(logger, LOGGER_DEBUG, "video renderer resumed");
-        gst_element_set_state (renderer->pipeline, GST_STATE_PLAYING);
-        if (!hls_video) {
-            gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
-        }
+    if (!renderer) {
+        return;
     }
-}
-
-bool video_renderer_is_paused() {
+    gst_element_set_state (renderer->pipeline, GST_STATE_PLAYING);
     GstState state;
-    gst_element_get_state(renderer->pipeline, &state, NULL, 0);
-    return (state == GST_STATE_PAUSED);
+    /* wait with timeout 100 msec for pipeline to change state from PAUSED to PLAYING */
+    gst_element_get_state(renderer->pipeline, &state, NULL, 100 * GST_MSECOND);
+    const gchar *state_name = gst_element_state_get_name(state);
+    logger_log(logger, LOGGER_DEBUG, "video renderer resumed: state %s", state_name);
+    gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
 }
 
 void video_renderer_start() {
-    renderer->bus = gst_element_get_bus(renderer->pipeline);
-    gst_element_set_state (renderer->pipeline, GST_STATE_PLAYING);
-    if (!hls_video) {
-        gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
-        first_packet = true;
+    if (hls_video) {
+        renderer->bus = gst_element_get_bus(renderer->pipeline);
+        gst_element_set_state (renderer->pipeline, GST_STATE_PLAYING);
+        return;
+    } 
+  /* when not hls, start both h264 and h265 pipelines; will shut down the "wrong" one when we know the codec */
+    for (int i = 0; i < n_renderers; i++) {
+        gst_element_set_state (renderer_type[i]->pipeline, GST_STATE_PLAYING);
+        gst_video_pipeline_base_time = gst_element_get_base_time(renderer_type[i]->appsrc);
+        renderer_type[i]->bus = gst_element_get_bus(renderer_type[i]->pipeline);
     }
+    renderer = NULL;
+    first_packet = true;
 #ifdef X_DISPLAY_FIX
     X11_search_attempts = 0;
 #endif
 }
-
-#ifdef X_DISPLAY_FIX
-void find_x11_window() {
-    X11_search_attempts++;
-    logger_log(logger, LOGGER_DEBUG, "Looking for X11 UxPlay Window, attempt %d", (int) X11_search_attempts);
-    get_x_window(renderer->gst_window, renderer->server_name);
-    if (renderer->gst_window->window) {
-        logger_log(logger, LOGGER_INFO, "\n*** X11 Windows: Use key F11 or (left Alt)+Enter to toggle full-screen mode\n");
-        if (fullscreen) {
-            set_fullscreen(renderer->gst_window, &fullscreen);
-        }
-    }
-}
-#endif
 
 /* used to find any X11 Window used by the playbin (HLS) pipeline after it starts playing. 
 *  if use_x11 is true, called every 100 ms after playbin state is READY until the x11 window is found*/
@@ -361,7 +402,7 @@ bool waiting_for_x11_window() {
     }
 #ifdef X_DISPLAY_FIX
     if (use_x11 && renderer->gst_window) {
-        find_x11_window();
+        get_x_window(renderer->gst_window, renderer->server_name);
         if (!renderer->gst_window->window) {
 	    return true;    /* window still not found */
         }
@@ -404,8 +445,16 @@ void video_renderer_render_buffer(unsigned char* data, int *data_len, int *nal_c
         gst_buffer_fill(buffer, 0, data, *data_len);
         gst_app_src_push_buffer (GST_APP_SRC(renderer->appsrc), buffer);
 #ifdef X_DISPLAY_FIX
-        if (renderer->gst_window && !(renderer->gst_window->window) && use_x11) {
-            find_x11_window();
+        if (renderer->gst_window && !(renderer->gst_window->window) && renderer->use_x11) {
+            X11_search_attempts++;
+            logger_log(logger, LOGGER_DEBUG, "Looking for X11 UxPlay Window, attempt %d", (int) X11_search_attempts);
+            get_x_window(renderer->gst_window, renderer->server_name);
+            if (renderer->gst_window->window) {
+                logger_log(logger, LOGGER_INFO, "\n*** X11 Windows: Use key F11 or (left Alt)+Enter to toggle full-screen mode\n");
+                if (fullscreen) {
+                    set_fullscreen(renderer->gst_window, &fullscreen);
+                }
+            }
         }
 #endif
     }
@@ -450,22 +499,34 @@ void video_renderer_destroy() {
     }
 }
 
-gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpointer loop) {
+gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void *loop) {
+
+  /* identify which pipeline sent the message */ 
+    int type = -1;
+    for (int i = 0 ; i < n_renderers ; i ++ ) {
+        if (renderer_type[i]->bus == bus) {
+            type = i;
+            break;
+        }
+    }
+    g_assert(type != -1);
+
     if (logger_debug) {
-        if (!hls_video) {
-	    g_print("GStreamer bus message %s %s\n", GST_MESSAGE_SRC_NAME(message), GST_MESSAGE_TYPE_NAME(message));
+        g_print("GStreamer %s bus message: %s %s\n", renderer_type[type]->codec, GST_MESSAGE_SRC_NAME(message), GST_MESSAGE_TYPE_NAME(message));
+    }
+
+    if (logger_debug && hls_video) {
+        gint64 pos;
+        gst_element_query_position (renderer->pipeline, GST_FORMAT_TIME, &pos);
+        if (GST_CLOCK_TIME_IS_VALID(pos)) {
+            g_print("GStreamer bus message %s %s; position: %" GST_TIME_FORMAT "\n", GST_MESSAGE_SRC_NAME(message),
+            GST_MESSAGE_TYPE_NAME(message), GST_TIME_ARGS(pos));
         } else {
-            gint64 pos;
-            gst_element_query_position (renderer->pipeline, GST_FORMAT_TIME, &pos);
-	    if (GST_CLOCK_TIME_IS_VALID(pos)) {
-                g_print("GStreamer bus message %s %s; position: %" GST_TIME_FORMAT "\n", GST_MESSAGE_SRC_NAME(message),
-                GST_MESSAGE_TYPE_NAME(message), GST_TIME_ARGS(pos));
-	    } else {
-                g_print("GStreamer bus message %s %s; position: none\n", GST_MESSAGE_SRC_NAME(message),
-                        GST_MESSAGE_TYPE_NAME(message));
-           }
+            g_print("GStreamer bus message %s %s; position: none\n", GST_MESSAGE_SRC_NAME(message),
+                   GST_MESSAGE_TYPE_NAME(message));
 	}
     }
+
     switch (GST_MESSAGE_TYPE (message)) {
     case GST_MESSAGE_DURATION:
         renderer->duration = GST_CLOCK_TIME_NONE;
@@ -504,10 +565,10 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpoin
 	g_error_free (err);
         g_free (debug);
 	if (renderer->appsrc) {
-            gst_app_src_end_of_stream (GST_APP_SRC(renderer->appsrc));
+            gst_app_src_end_of_stream (GST_APP_SRC(renderer_type[type]->appsrc));
 	}
-        gst_bus_set_flushing(renderer->bus, TRUE);
-        gst_element_set_state (renderer->pipeline, GST_STATE_READY);
+        gst_bus_set_flushing(bus, TRUE);
+        gst_element_set_state (renderer_type[type]->pipeline, GST_STATE_READY);
         renderer->terminate = TRUE;
         g_main_loop_quit( (GMainLoop *) loop);
         break;
@@ -515,28 +576,37 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpoin
     case GST_MESSAGE_EOS:
       /* end-of-stream */
         logger_log(logger, LOGGER_INFO, "GStreamer: End-Of-Stream");
-    //case GST_MESSAGE_DURATION:
-      	//g_print("bus message (hls/playbin): %s\n", GST_MESSAGE_TYPE_NAME(message));
-        /* The duration has changed, mark the current one as invalid */
-        //renderer->duration = GST_CLOCK_TIME_NONE;
-        //break;
 	if (hls_video) {
-            gst_bus_set_flushing(renderer->bus, TRUE);
+            gst_bus_set_flushing(bus, TRUE);
             gst_element_set_state (renderer->pipeline, GST_STATE_READY);
 	    renderer->terminate = TRUE;
             g_main_loop_quit( (GMainLoop *) loop);
         }
         break;
     case GST_MESSAGE_STATE_CHANGED:
-        if (auto_videosink) {
+ESSAGE_STATE_CHANGED:
+        if (renderer_type[type]->state_pending && strstr(GST_MESSAGE_SRC_NAME(message), "pipeline")) {
+            GstState state;
+            gst_element_get_state(renderer_type[type]->pipeline, &state, NULL,0);
+	    if (state == GST_STATE_NULL) {
+                gst_element_set_state(renderer_type[type]->pipeline, GST_STATE_PLAYING);
+	    } else if (state == GST_STATE_PLAYING) {
+                renderer_type[type]->state_pending = false;
+            }
+        }
+        if (renderer_type[type]->autovideo) {
             char *sink = strstr(GST_MESSAGE_SRC_NAME(message), "-actual-sink-");
             if (sink) {
                 sink += strlen("-actual-sink-");
-                logger_log(logger, LOGGER_DEBUG, "GStreamer: automatically-selected videosink is \"%ssink\"", sink);
-                auto_videosink = false;
+		if (strstr(GST_MESSAGE_SRC_NAME(message), renderer_type[type]->codec)) {
+                    logger_log(logger, LOGGER_DEBUG, "GStreamer: automatically-selected videosink"
+                               " (renderer %d: %s) is \"%ssink\"", renderer_type[type]->id + 1,
+                               renderer_type[type]->codec, sink);
 #ifdef X_DISPLAY_FIX
-                use_x11 = (strstr(sink, "ximage") || strstr(sink, "xvimage"));
+                    renderer_type[type]->use_x11 = (strstr(sink, "ximage") || strstr(sink, "xvimage"));
 #endif
+		    renderer_type[type]->autovideo = false;
+                }
             }
         }
         break;
@@ -584,35 +654,51 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, gpoin
     return TRUE;
 }
 
-unsigned int video_renderer_listen(void *loop) {
-    return (unsigned int) gst_bus_add_watch(renderer->bus, (GstBusFunc)
-                                            gstreamer_pipeline_bus_callback, (gpointer) loop);    
+void video_renderer_choose_codec (bool video_is_h265) {
+    /* set renderer to h264 or h265, depending on pps/sps received by raop_rtp_mirror */
+    video_renderer_t *renderer_new = video_is_h265 ? renderer_type[1] : renderer_type[0];
+    if (renderer == renderer_new) {
+        return;
+    }
+    video_renderer_t *renderer_prev = renderer;
+    renderer = renderer_new;
+    gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
+    /* it seems unlikely that the codec will change between h264 and h265 during a connection,
+     * but in case it does, we set the previous renderer to GST_STATE_NULL, detect
+     * when this is finished by listening for the bus message, and then reset it to
+     * GST_STATE_READY, so it can be reused if the codec changes again. */
+    if (renderer_prev) {
+        gst_app_src_end_of_stream (GST_APP_SRC(renderer_prev->appsrc));
+        gst_bus_set_flushing(renderer_prev->bus, TRUE);
+        /* set state of previous renderer to GST_STATE_NULL to (hopefully?) close its video window */
+        gst_element_set_state (renderer_prev->pipeline, GST_STATE_NULL);
+	renderer_prev->state_pending = true;     // will set state to PLAYING once state is NULL
+    }
 }
 
-//bool video_check_position() {
-// if (renderer && renderer->terminate) {
-//return false;
-//nt64 pos = 0;
-//st_element_query_position (renderer->pipeline, GST_FORMAT_TIME, &pos);
-// /* use pos > renderer->duration > 0 as a test to see if video has finished
-//     * video_check_position  is called repeatedly  while HLS video is playing */
-// if (pos > renderer->duration) {
-//    video_renderer_pause();
-//    gst_bus_set_flushing(renderer->bus, TRUE);
-//    g_print("media streaming is complete (duration %" GST_TIME_FORMAT "): terminating HLS session\n",
-//           GST_TIME_ARGS(renderer->duration));
-//    return false;
-//}
-// }
-// return true;
-//}
-  
+unsigned int video_reset_callback(void * loop) {
+    if (video_terminate) {
+        video_terminate = false;
+	gst_app_src_end_of_stream (GST_APP_SRC(renderer->appsrc));
+	gboolean flushing = TRUE;
+        gst_bus_set_flushing(renderer->bus, flushing);
+ 	gst_element_set_state (renderer->pipeline, GST_STATE_NULL);
+	g_main_loop_quit( (GMainLoop *) loop);
+    }
+    return (unsigned  int) TRUE;
+}
+
 bool video_get_playback_info(double *duration, double *position, float *rate) {
     gint64 pos = 0;
     GstState state;
-    
+    g_print("video_get_playback_info %p\n", renderer);
     *duration = 0.0;
     *position = -1.0;
+    *rate = 0.0f;
+    if (!renderer) {
+   
+        return true;
+    }
     gst_element_get_state(renderer->pipeline, &state, NULL, 0);
     *rate = 0.0f;
     switch (state) {
@@ -658,4 +744,10 @@ void video_renderer_seek(float position) {
     } else {
         g_print("seek failed\n");
     }
+}
+
+unsigned int video_renderer_listen(void *loop, int id) {
+    g_assert(id >= 0 && id < n_renderers);
+    return (unsigned int) gst_bus_add_watch(renderer_type[id]->bus,(GstBusFunc)
+                                            gstreamer_pipeline_bus_callback, (gpointer) loop);    
 }

@@ -62,7 +62,7 @@
 #include "renderers/video_renderer.h"
 #include "renderers/audio_renderer.h"
 
-#define VERSION "1.69"
+#define VERSION "1.71beta"
 
 #define SECOND_IN_USECS 1000000
 #define SECOND_IN_NSECS 1000000000UL
@@ -85,6 +85,7 @@ static bool relaunch_video = false;
 static bool reset_loop = false;
 static unsigned int open_connections= 0;
 static std::string videosink = "autovideosink";
+static std::string videosink_options = "";
 static videoflip_t videoflip[2] = { NONE , NONE };
 static bool use_video = true;
 static unsigned char compression_type = 0;
@@ -141,6 +142,9 @@ static std::vector <std::string> registered_keys;
 static double db_low = -30.0;
 static double db_high = 0.0;
 static bool taper_volume = false;
+static bool h265_support = false;
+static int n_renderers = 0;
+static bool hls_support = false;
 static std::string url = "";
 static guint gst_x11_window_id = 0;
 static guint gst_hls_position_id = 0;
@@ -371,35 +375,13 @@ static gboolean x11_window_callback(gpointer loop) {
     return FALSE;
 }
 
-
-
-//static gboolean hls_position_callback(gpointer loop) {
-//    bool running;
-//   if (url.empty()) {
-//        g_source_remove(gst_hls_position_id);
-//       gst_hls_position_id = 0;
-//       return FALSE;
-//   }
-//   if (video_check_position()) {
-//     return TRUE;
-//   }
-//    url.erase();
-//    reset_loop = true;
-//   remote_clock_offset = 0;
-//    relaunch_video = true;
-//   g_source_remove(gst_hls_position_id);
-//    gst_hls_position_id = 0;
-//    return FALSE;
-//}
-
-
-static gboolean  sigint_callback(gpointer loop) {
+static gboolean sigint_callback(gpointer loop) {
     relaunch_video = false;
     g_main_loop_quit((GMainLoop *) loop);
     return TRUE;
 }
 
-static gboolean  sigterm_callback(gpointer loop) {
+static gboolean sigterm_callback(gpointer loop) {
     relaunch_video = false;
     g_main_loop_quit((GMainLoop *) loop);
     return TRUE;
@@ -427,27 +409,39 @@ static guint g_unix_signal_add(gint signum, GSourceFunc handler, gpointer user_d
 #endif
 
 static void main_loop()  {
-    guint gst_bus_watch_id = 0;
-
+    guint gst_bus_watch_id[2] = { 0 };
+    g_assert(n_renderers <= 2);
     GMainLoop *loop = g_main_loop_new(NULL,FALSE);
     relaunch_video = false;
     if (use_video) {
         relaunch_video = true;
-        gst_bus_watch_id = (guint) video_renderer_listen((void *)loop);
-        gst_x11_window_id = g_timeout_add(100, (GSourceFunc) x11_window_callback, (gpointer) loop);
-	//gst_hls_position_id = g_timeout_add(500, (GSourceFunc) hls_position_callback, (gpointer) loop);
+        if (url.empty()) {
+            n_renderers = h265_support ? 2 : 1;
+            gst_x11_window_id = 0;           
+        } else {
+            /* hls video will be rendered */
+	    n_renderers = 1;
+            url.erase();
+            gst_x11_window_id = g_timeout_add(100, (GSourceFunc) x11_window_callback, (gpointer) loop);
+        }
+        for (int i = 0; i < n_renderers; i++) {
+            gst_bus_watch_id[i] = (guint) video_renderer_listen((void *)loop, i);
+        }
     }
     guint reset_watch_id = g_timeout_add(100, (GSourceFunc) reset_callback, (gpointer) loop);
+    guint video_reset_watch_id = g_timeout_add(100, (GSourceFunc) video_reset_callback, (gpointer) loop);
     guint sigterm_watch_id = g_unix_signal_add(SIGTERM, (GSourceFunc) sigterm_callback, (gpointer) loop);
     guint sigint_watch_id = g_unix_signal_add(SIGINT, (GSourceFunc) sigint_callback, (gpointer) loop);
     g_main_loop_run(loop);
 
+    for (int i = 0; i < n_renderers; i++) {
+        if (gst_bus_watch_id[i] > 0) g_source_remove(gst_bus_watch_id[i]);
+    }
     if (gst_x11_window_id > 0) g_source_remove(gst_x11_window_id);
-    //if (gst_hls_position_id > 0) g_source_remove(gst_hls_position_id);
-    if (gst_bus_watch_id > 0) g_source_remove(gst_bus_watch_id);
     if (sigint_watch_id > 0) g_source_remove(sigint_watch_id);
     if (sigterm_watch_id > 0) g_source_remove(sigterm_watch_id);
-    if (reset_watch_id > 0) g_source_remove(reset_watch_id);    
+    if (reset_watch_id > 0) g_source_remove(reset_watch_id);
+    if (video_reset_watch_id > 0) g_source_remove(video_reset_watch_id);
     g_main_loop_unref(loop);
 }    
 
@@ -611,6 +605,8 @@ static void print_info (char *name) {
     printf("Options:\n");
     printf("-n name   Specify the network name of the AirPlay server\n");
     printf("-nh       Do not add \"@hostname\" at the end of AirPlay server name\n");
+    printf("-h265     Support h265 (4K) video (with h265 versions of h264 plugins)\n");
+    printf("-hls      Support HTTP Live Streaming (currently Youtube video only) \n");
     printf("-pin[xxxx]Use a 4-digit pin code to control client access (default: no)\n");
     printf("          default pin is random: optionally use fixed pin xxxx\n");
     printf("-reg [fn] Keep a register in $HOME/.uxplay.register to verify returning\n");
@@ -622,8 +618,9 @@ static void print_info (char *name) {
     printf("-async no Switch off audio/(client)video timestamp synchronization\n");
     printf("-db l[:h] Set minimum volume attenuation to l dB (decibels, negative);\n");
     printf("          optional: set maximum to h dB (+ or -) default: -30.0:0.0 dB\n");
-    printf("-taper    Use a \"tapered\" AirPlay volume-control profile\n"); 
-    printf("-s wxh[@r]Set display resolution [refresh_rate] default 1920x1080[@60]\n");
+    printf("-taper    Use a \"tapered\" AirPlay volume-control profile\n");
+    printf("-s wxh[@r]Request to client for video display resolution [refresh_rate]\n"); 
+    printf("          default 1920x1080[@60] (or 3840x2160[@60] with -h265 option)\n");
     printf("-o        Set display \"overscanned\" mode on (not usually needed)\n");
     printf("-fs       Full-screen (only works with X11, Wayland, VAAPI, D3D11)\n");
     printf("-p        Use legacy ports UDP 6000:6001:7011 TCP 7000:7001:7100\n");
@@ -652,7 +649,7 @@ static void print_info (char *name) {
     printf("-ca <fn>  In Airplay Audio (ALAC) mode, write cover-art to file <fn>\n");
     printf("-reset n  Reset after 3n seconds client silence (default %d, 0=never)\n", NTP_TIMEOUT_LIMIT);
     printf("-nofreeze Do NOT leave frozen screen in place after reset\n");
-    printf("-nc       do NOT Close video window when client stops mirroring\n");
+    printf("-nc       Do NOT Close video window when client stops mirroring\n");
     printf("-nohold   Drop current connection when new client connects.\n");
     printf("-restrict Restrict clients to those specified by \"-allow <deviceID>\"\n");
     printf("          UxPlay displays deviceID when a client attempts to connect\n");
@@ -971,6 +968,12 @@ static void parse_arguments (int argc, char *argv[]) {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             videosink.erase();
             videosink.append(argv[++i]);
+            std::size_t pos = videosink.find(" ");
+	    if (pos != std::string::npos) {
+                videosink_options.erase();
+                videosink_options = videosink.substr(pos);
+	        videosink.erase(pos);
+            }
         } else if (arg == "-as") {
             if (!option_has_value(i, argc, arg, argv[i+1])) exit(1);
             audiosink.erase();
@@ -1168,6 +1171,10 @@ static void parse_arguments (int argc, char *argv[]) {
             db_low = db1;
             db_high = db2;
 	    printf("db range %f:%f\n", db_low, db_high);
+        } else if (arg == "-hls") {
+            hls_support = true;
+        } else if (arg == "-h265") {
+            h265_support = true;
         } else if (arg == "-nofreeze") {
             nofreeze = true;
         } else {
@@ -1380,17 +1387,17 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
      * (overwrites features set in dnssdint.h)
      * default: FEATURES_1 = 0x5A7FFEE6, FEATURES_2 = 0 */
 
-    dnssd_set_airplay_features(dnssd,  0, 1); // AirPlay video supported 
+    dnssd_set_airplay_features(dnssd,  0, 0); // AirPlay video supported 
     dnssd_set_airplay_features(dnssd,  1, 1); // photo supported 
     dnssd_set_airplay_features(dnssd,  2, 1); // video protected with FairPlay DRM 
     dnssd_set_airplay_features(dnssd,  3, 0); // volume control supported for videos
 
-    dnssd_set_airplay_features(dnssd,  4, 1); // http live streaming (HLS) supported
+    dnssd_set_airplay_features(dnssd,  4, 0); // http live streaming (HLS) supported
     dnssd_set_airplay_features(dnssd,  5, 1); // slideshow supported 
     dnssd_set_airplay_features(dnssd,  6, 1); // 
     dnssd_set_airplay_features(dnssd,  7, 1); // mirroring supported
 
-    dnssd_set_airplay_features(dnssd,  8, 1); // screen rotation  supported 
+    dnssd_set_airplay_features(dnssd,  8, 0); // screen rotation  supported 
     dnssd_set_airplay_features(dnssd,  9, 1); // audio supported 
     dnssd_set_airplay_features(dnssd, 10, 1); //  
     dnssd_set_airplay_features(dnssd, 11, 1); // audio packet redundancy supported
@@ -1420,11 +1427,8 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
     dnssd_set_airplay_features(dnssd, 30, 1); // RAOP support: with this bit set, the AirTunes service is not required. 
     dnssd_set_airplay_features(dnssd, 31, 0); // 
 
-    for (int i = 32; i < 64; i++) {
-        dnssd_set_airplay_features(dnssd, i, 0);
-    }
 
-    /*  bits 32-63 are  not used here: see  https://emanualcozzi.net/docs/airplay2/features 
+    /*  bits 32-63: see  https://emanualcozzi.net/docs/airplay2/features 
     dnssd_set_airplay_features(dnssd, 32, 0); // isCarPlay when ON,; Supports InitialVolume when OFF
     dnssd_set_airplay_features(dnssd, 33, 0); // Supports Air Play Video Play Queue
     dnssd_set_airplay_features(dnssd, 34, 0); // Supports Air Play from cloud (requires that bit 6 is ON)
@@ -1437,7 +1441,7 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
 
     dnssd_set_airplay_features(dnssd, 40, 0); // Supports Buffered Audio
     dnssd_set_airplay_features(dnssd, 41, 0); // Supports PTP
-    dnssd_set_airplay_features(dnssd, 42, 0); // Supports Screen Multi Codec
+    dnssd_set_airplay_features(dnssd, 42, 0); // Supports Screen Multi Codec (allows h265 video)
     dnssd_set_airplay_features(dnssd, 43, 0); // Supports System Pairing
 
     dnssd_set_airplay_features(dnssd, 44, 0); // is AP Valeria Screen Sender
@@ -1463,6 +1467,15 @@ static int start_dnssd(std::vector<char> hw_addr, std::string name) {
     dnssd_set_airplay_features(dnssd, 60, 0); // Supports Audo Media Data Control         
     dnssd_set_airplay_features(dnssd, 61, 0); // Supports RFC2198 redundancy
     */
+
+    /* needed for HLS video support */
+    dnssd_set_airplay_features(dnssd, 0, (int) hls_support);
+    dnssd_set_airplay_features(dnssd, 4, (int) hls_support);
+    // not sure about this one (bit 8, screen rotation supported):
+    //dnssd_set_airplay_features(dnssd, 8, (int) hls_support);
+    
+    /* needed for h265 video support */
+    dnssd_set_airplay_features(dnssd, 42, (int) h265_support);
 
     /* bit 27 of Features determines whether the AirPlay2 client-pairing protocol will be used (1) or not (0) */
     dnssd_set_airplay_features(dnssd, 27, (int) setup_legacy_pairing);
@@ -1501,6 +1514,13 @@ extern "C" void video_reset(void *cls) {
     reset_loop = true;
     remote_clock_offset = 0;
     relaunch_video = true;
+}
+
+extern "C" void video_set_codec(void *cls, video_codec_t codec) {
+    if (use_video) {
+        bool video_is_h265 = (codec == VIDEO_CODEC_H265); 
+        video_renderer_choose_codec(video_is_h265);
+    }
 }
 
 extern "C" void display_pin(void *cls, char *pin) {
@@ -1628,18 +1648,12 @@ extern "C" void video_process (void *cls, raop_ntp_t *ntp, video_decode_struct *
 }
 
 extern "C" void video_pause (void *cls) {
-#ifdef GST_124
-    return;  //pause/resume changes in GStreamer-1.24 break this code
-#endif
     if (use_video) {
         video_renderer_pause();
     }
 }
 
 extern "C" void video_resume (void *cls) {
-#ifdef GST_124
-    return;  //pause/resume changes in GStreamer-1.24 break this code
-#endif
     if (use_video) {
         video_renderer_resume();
     }
@@ -1861,6 +1875,7 @@ extern "C" void on_video_acquire_playback_info (void *cls, playback_info_t *play
     LOGD("on_video_acquire_playback info\n");
     bool still_playing = video_get_playback_info(&playback_info->duration, &playback_info->position,
                                                  &playback_info->rate);
+    LOGD("on_video_acquire_playback info done\n");
     if (!still_playing) {
         LOGI(" video has finished, %f", playback_info->position);
         playback_info->position = -1.0;
@@ -1918,12 +1933,13 @@ static int start_raop_server (unsigned short display[5], unsigned short tcp[3], 
     raop_cbs.register_client = register_client;
     raop_cbs.check_register = check_register;
     raop_cbs.export_dacp = export_dacp;
+    raop_cbs.video_reset = video_reset;
+    raop_cbs.video_set_codec = video_set_codec;
     raop_cbs.on_video_play = on_video_play;
     raop_cbs.on_video_scrub = on_video_scrub;
     raop_cbs.on_video_rate = on_video_rate;
     raop_cbs.on_video_stop = on_video_stop;
     raop_cbs.on_video_acquire_playback_info = on_video_acquire_playback_info;
-    raop_cbs.video_reset = video_reset;
 
     raop = raop_init(&raop_cbs);
     if (raop == NULL) {
@@ -2130,21 +2146,22 @@ int main (int argc, char *argv[]) {
         use_video = false;
 	videosink.erase();
         videosink.append("fakesink");
+	videosink_options.erase();
 	LOGI("video_disabled");
         display[3] = 1; /* set fps to 1 frame per sec when no video will be shown */
     }
 
     if (fullscreen && use_video) {
         if (videosink == "waylandsink" || videosink == "vaapisink") {
-            videosink.append(" fullscreen=true");
+            videosink_options.append(" fullscreen=true");
 	}
     }
 
-    if (videosink == "d3d11videosink"  && use_video) {
+    if (videosink == "d3d11videosink" && videosink_options.empty() && use_video) {
         if (fullscreen) {
-            videosink.append(" fullscreen-toggle-mode=GST_D3D11_WINDOW_FULLSCREEN_TOGGLE_MODE_PROPERTY fullscreen=true ");
+            videosink_options.append(" fullscreen-toggle-mode=GST_D3D11_WINDOW_FULLSCREEN_TOGGLE_MODE_PROPERTY fullscreen=true ");
         } else {
-            videosink.append(" fullscreen-toggle-mode=GST_D3D11_WINDOW_FULLSCREEN_TOGGLE_MODE_ALT_ENTER ");
+            videosink_options.append(" fullscreen-toggle-mode=GST_D3D11_WINDOW_FULLSCREEN_TOGGLE_MODE_ALT_ENTER ");
         }
         LOGI("d3d11videosink is being used with option fullscreen-toggle-mode=alt-enter\n"
                "Use Alt-Enter key combination to toggle into/out of full-screen mode");
@@ -2220,10 +2237,10 @@ int main (int argc, char *argv[]) {
     } else {
         LOGI("audio_disabled");
     }
-
     if (use_video) {
         video_renderer_init(render_logger, server_name.c_str(), videoflip, video_parser.c_str(),
-                            video_decoder.c_str(), video_converter.c_str(), videosink.c_str(), &fullscreen, &video_sync, NULL);
+                            video_decoder.c_str(), video_converter.c_str(), videosink.c_str(),
+                            videosink_options.c_str(), fullscreen, &video_sync, h265_support, NULL);
         video_renderer_start();
     }
 
@@ -2251,7 +2268,18 @@ int main (int argc, char *argv[]) {
         write_coverart(coverart_filename.c_str(), (const void *) empty_image, sizeof(empty_image));
     }
 
-    restart:
+    /* set default resolutions for h264 or h265*/
+    if (!display[0] && !display[1]) {
+        if (h265_support) {
+            display[0] = 3840;
+            display[1] = 2160;
+        } else {
+            display[0] = 1920;
+            display[1] = 1080;
+        }	  
+    }
+
+ restart:
     if (start_dnssd(server_hw_addr, server_name)) {
         goto cleanup;
     }
@@ -2266,7 +2294,8 @@ int main (int argc, char *argv[]) {
     }
     reconnect:
     compression_type = 0;
-    close_window = new_window_closing_behavior; 
+    close_window = new_window_closing_behavior;
+
     main_loop();
     if (relaunch_video || reset_loop) {
         if(reset_loop) {
@@ -2276,7 +2305,6 @@ int main (int argc, char *argv[]) {
         }
         if (use_audio) audio_renderer_stop();
         if (use_video && close_window) {
-	  //video_renderer_stop();
             video_renderer_destroy();
             if (!preserve_connections) {
                 raop_destroy_airplay_video(raop);
@@ -2286,8 +2314,8 @@ int main (int argc, char *argv[]) {
 	    preserve_connections = false;
 	    const char *uri = (url.empty() ? NULL : url.c_str());
             video_renderer_init(render_logger, server_name.c_str(), videoflip, video_parser.c_str(),
-                                video_decoder.c_str(), video_converter.c_str(), videosink.c_str(), &fullscreen,
-                                &video_sync, uri);
+                                video_decoder.c_str(), video_converter.c_str(), videosink.c_str(),
+                                videosink_options.c_str(), fullscreen, video_sync, h265_support, uri);
             video_renderer_start();
         }
         if (relaunch_video) {
