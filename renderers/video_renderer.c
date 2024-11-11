@@ -372,7 +372,9 @@ void video_renderer_resume() {
     gst_element_get_state(renderer->pipeline, &state, NULL, 100 * GST_MSECOND);
     const gchar *state_name = gst_element_state_get_name(state);
     logger_log(logger, LOGGER_DEBUG, "video renderer resumed: state %s", state_name);
-    gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
+    if (renderer->appsrc) {
+        gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
+    }
 }
 
 void video_renderer_start() {
@@ -384,7 +386,9 @@ void video_renderer_start() {
   /* when not hls, start both h264 and h265 pipelines; will shut down the "wrong" one when we know the codec */
     for (int i = 0; i < n_renderers; i++) {
         gst_element_set_state (renderer_type[i]->pipeline, GST_STATE_PLAYING);
-        gst_video_pipeline_base_time = gst_element_get_base_time(renderer_type[i]->appsrc);
+	if (renderer_type[i]->appsrc) {
+            gst_video_pipeline_base_time = gst_element_get_base_time(renderer_type[i]->appsrc);
+        }
         renderer_type[i]->bus = gst_element_get_bus(renderer_type[i]->pipeline);
     }
     renderer = NULL;
@@ -465,7 +469,7 @@ void video_renderer_flush() {
 
 void video_renderer_stop() {
     if (renderer) {
-        if (!hls_video) {
+        if (renderer->appsrc) {
             gst_app_src_end_of_stream (GST_APP_SRC(renderer->appsrc));
         }
         gst_element_set_state (renderer->pipeline, GST_STATE_NULL);
@@ -655,6 +659,7 @@ ESSAGE_STATE_CHANGED:
 }
 
 void video_renderer_choose_codec (bool video_is_h265) {
+    g_assert(!hls_video);
     /* set renderer to h264 or h265, depending on pps/sps received by raop_rtp_mirror */
     video_renderer_t *renderer_new = video_is_h265 ? renderer_type[1] : renderer_type[0];
     if (renderer == renderer_new) {
@@ -679,7 +684,9 @@ void video_renderer_choose_codec (bool video_is_h265) {
 unsigned int video_reset_callback(void * loop) {
     if (video_terminate) {
         video_terminate = false;
-	gst_app_src_end_of_stream (GST_APP_SRC(renderer->appsrc));
+        if (renderer->appsrc) {
+	    gst_app_src_end_of_stream (GST_APP_SRC(renderer->appsrc));
+        }
 	gboolean flushing = TRUE;
         gst_bus_set_flushing(renderer->bus, flushing);
  	gst_element_set_state (renderer->pipeline, GST_STATE_NULL);
