@@ -938,8 +938,8 @@ the pipeline are specific for h264 or h265, the correct version will be
 used in each pipeline. A wired Client-Server ethernet connection is
 preferred over Wifi for 4K video, and might be required by the client.
 Only recent Apple devices (M1/M2 Macs or iPads, and some iPhones) can
-send h265 video if a resolut "-s wxh" with h \> 1080 is requested. The
-"-h265" option changes the default resolution ("-s" option) from
+send h265 video if a resolution "-s wxh" with h \> 1080 is requested.
+The "-h265" option changes the default resolution ("-s" option) from
 1920x1080 to 3840x2160, and leaves default maximum framerate ("-fps"
 option) at 30fps.
 

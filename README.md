@@ -742,7 +742,7 @@ with "`#`" are treated as comments, and ignored.  Command line options supersede
    video (1080p) in screen-mirror mode.    When this option is used, two "video pipelines" (one for h264, one for h265) are created.
    If any GStreamer plugins in the pipeline are specific for h264 or h265, the correct version  will be used in each pipeline.
    A wired Client-Server ethernet connection is preferred over Wifi for 4K video, and might be required by the client.  Only recent Apple devices
-   (M1/M2 Macs or iPads, and some iPhones) can send h265 video if a resolut "-s wxh" with h > 1080 is requested.
+   (M1/M2 Macs or iPads, and some iPhones) can send h265 video if a resolution "-s wxh" with h > 1080 is requested.
    The "-h265" option changes the  default resolution ("-s" option) from 1920x1080 to 3840x2160, and leaves default maximum 
    framerate  ("-fps" option) at 30fps.
 

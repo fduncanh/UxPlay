@@ -2240,7 +2240,7 @@ int main (int argc, char *argv[]) {
     if (use_video) {
         video_renderer_init(render_logger, server_name.c_str(), videoflip, video_parser.c_str(),
                             video_decoder.c_str(), video_converter.c_str(), videosink.c_str(),
-                            videosink_options.c_str(), fullscreen, &video_sync, h265_support, NULL);
+                            videosink_options.c_str(), fullscreen, video_sync, h265_support, NULL);
         video_renderer_start();
     }
 
