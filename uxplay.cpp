@@ -1847,7 +1847,7 @@ extern "C" void on_video_play(void *cls, const char* location, const float start
     reset_loop = true;
     relaunch_video = true;
     preserve_connections = true;
-    LOGD("on_video_play: location = %s", url.c_str());
+    LOGD("********************on_video_play: location = %s***********************", url.c_str());
 }
 
 extern "C" void on_video_scrub(void *cls, const float position) {
@@ -2304,7 +2304,7 @@ int main (int argc, char *argv[]) {
             raop_stop(raop);
         }
         if (use_audio) audio_renderer_stop();
-        if (use_video && close_window) {
+        if (use_video && (close_window || preserve_connections)) {
             video_renderer_destroy();
             if (!preserve_connections) {
                 raop_destroy_airplay_video(raop);
