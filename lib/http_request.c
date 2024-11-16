@@ -28,7 +28,6 @@ struct http_request_s {
     llhttp_settings_t parser_settings;
 
     bool is_reverse;  // if true, this is a reverse-response from client
-  
     const char *method;
     char *url;
     char protocol[9];
@@ -191,8 +190,9 @@ http_request_add_data(http_request_t *request, const char *data, int datalen)
 
     ret = llhttp_execute(&request->parser, data, datalen);
 
+    /* support for "Upgrade" to reverse http ("PTTH/1.0") protocol */
     llhttp_resume_after_upgrade(&request->parser);
-    
+
     return ret;
 }
 
@@ -207,7 +207,7 @@ int
 http_request_has_error(http_request_t *request)
 {
     assert(request);
-        if (request->is_reverse) {
+    if (request->is_reverse) {
         return 0;
     }
     return (llhttp_get_errno(&request->parser) != HPE_OK);

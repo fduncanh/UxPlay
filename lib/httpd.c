@@ -292,15 +292,14 @@ httpd_nohold(httpd_t *httpd) {
 void
 httpd_remove_known_connections(httpd_t *httpd) {
     for (int i = 0; i < httpd->max_connections; i++) {
-
         http_connection_t *connection = &httpd->connections[i];
         if (!connection->connected || connection->type == CONNECTION_TYPE_UNKNOWN) {
             continue;
         }
-	httpd_remove_connection(httpd, connection);
+        httpd_remove_connection(httpd, connection);
     }
 }
-	
+
 static THREAD_RETVAL
 httpd_thread(void *arg)
 {
@@ -472,10 +471,10 @@ httpd_thread(void *arg)
                 /* this is a response from the client to a
                  * GET /event reverse HTTP request from the server */
                 if (ret && logger_debug) {
-		    buffer[ret] = '\0';
-		    logger_log(httpd->logger, LOGGER_INFO, "<<<< received response from client"
+                    buffer[ret] = '\0';
+                    logger_log(httpd->logger, LOGGER_INFO, "<<<< received response from client"
                                " (reversed HTTP = \"PTTH/1.0\") connection"
-			       " on socket %d:\n%s\n", connection->socket_fd, buffer);
+                               " on socket %d:\n%s\n", connection->socket_fd, buffer);
                 }
                 if (ret == 0) {
                     httpd_remove_connection(httpd, connection);
@@ -496,7 +495,7 @@ httpd_thread(void *arg)
             if (http_request_is_complete(connection->request)) {
                 http_response_t *response = NULL;
                 // Callback the received data to raop
-		if (logger_debug) {
+                if (logger_debug) {
                     const char *method = http_request_get_method(connection->request);
                     const char *url = http_request_get_url(connection->request);
                     const char *protocol = http_request_get_protocol(connection->request);
