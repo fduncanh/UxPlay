@@ -362,7 +362,7 @@ httpd_thread(void *arg)
             /* Timeout happened */
             continue;
         } else if (ret == -1) {
-            logger_log(httpd->logger, LOGGER_ERR, "httpd error in select");
+            logger_log(httpd->logger, LOGGER_ERR, "httpd error in select: %d %s", errno, strerror(errno));
             break;
         }
 

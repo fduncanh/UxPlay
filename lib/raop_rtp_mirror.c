@@ -232,7 +232,7 @@ raop_rtp_mirror_thread(void *arg)
             /* Timeout happened */
             continue;
         } else if (ret == -1) {
-            logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in select");
+            logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "raop_rtp_mirror error in select: %d %s", errno, strerror(errno));
             break;
         }
 
