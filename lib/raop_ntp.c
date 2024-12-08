@@ -214,10 +214,14 @@ raop_ntp_init_socket(raop_ntp_t *raop_ntp, int use_ipv6)
     }
 
     // We're calling recvfrom without knowing whether there is any data, so we need a timeout
-
+    uint32_t recv_timeout_msec = 300; 
+#ifdef _WIN32
+    DWORD tv  = recv_timeout_msec;
+#else
     struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 300000;
+    tv.tv_sec = recv_timeout_msec / (uint32_t) 1000;
+    tv.tv_usec = recv_timeout_msec % (uint32_t) 1000;
+#endif
     if (setsockopt(tsock, SOL_SOCKET, SO_RCVTIMEO, CAST &tv, sizeof(tv)) < 0) {
         goto sockets_cleanup;
     }
