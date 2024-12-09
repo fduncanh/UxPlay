@@ -220,7 +220,7 @@ raop_ntp_init_socket(raop_ntp_t *raop_ntp, int use_ipv6)
 #else
     struct timeval tv;
     tv.tv_sec = recv_timeout_msec / (uint32_t) 1000;
-    tv.tv_usec = recv_timeout_msec % (uint32_t) 1000;
+    tv.tv_usec = ((uint32_t) 1000) * (recv_timeout_msec % (uint32_t) 1000);
 #endif
     if (setsockopt(tsock, SOL_SOCKET, SO_RCVTIMEO, CAST &tv, sizeof(tv)) < 0) {
         goto sockets_cleanup;
