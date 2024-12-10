@@ -75,6 +75,9 @@ struct raop_s {
 
     /* place to store media_data_store */
      airplay_video_t *airplay_video;
+
+    /* activate support for HLS live streaming */
+     bool hls_support;
 };
 
 struct raop_conn_s {
@@ -172,7 +175,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
     char *response_data = NULL;
     int response_datalen = 0;
     raop_conn_t *conn = ptr;
-
+    bool hls_request = false;
     logger_log(conn->raop->logger, LOGGER_DEBUG, "conn_request");
     bool logger_debug = (logger_get_level(conn->raop->logger) >= LOGGER_DEBUG);
 
@@ -195,12 +198,18 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
         return;
     }
 
-    const char *url = http_request_get_url(request);
-    const char *protocol = http_request_get_protocol(request);
+/* this rejects messages from _airplay._tcp for video streaming protocol unless bool raop->hls_support is true*/
     const char *cseq = http_request_get_header(request, "CSeq");
+    const char *protocol = http_request_get_protocol(request);
+    if (!cseq && !conn->raop->hls_support) {
+        logger_log(conn->raop->logger, LOGGER_INFO, "ignoring AirPlay video streaming request (use option -hls to activate HLS support)");
+        return;
+    }
+
+    const char *url = http_request_get_url(request);
     const char *client_session_id = http_request_get_header(request, "X-Apple-Session-ID");
     const char *host = http_request_get_header(request, "Host");
-    bool hls_request =  (host && !cseq && !client_session_id);
+    hls_request =  (host && !cseq && !client_session_id);
 
     if (conn->connection_type == CONNECTION_TYPE_UNKNOWN) {
         if (cseq) {
@@ -554,6 +563,8 @@ raop_init(raop_callbacks_t *callbacks) {
     raop->max_ntp_timeouts = 0;
     raop->audio_delay_micros = 250000;
 
+    raop->hls_support = false;
+
     return raop;
 }
 
@@ -668,6 +679,8 @@ int raop_set_plist(raop_t *raop, const char *plist_item, const int value) {
     } else if (strcmp(plist_item, "pin") == 0) {
         raop->pin = value;
         raop->use_pin = true;
+    } else if (strcmp(plist_item, "hls") == 0) {
+        raop->hls_support = (value > 0 ? true : false);
     } else {
         retval = -1;
     }	  

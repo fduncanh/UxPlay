@@ -1,10 +1,10 @@
-# UxPlay 1.71beta: AirPlay-Mirror and AirPlay-Audio server for Linux, macOS, and Unix (now also runs on Windows).
+# UxPlay 1.71: AirPlay-Mirror and AirPlay-Audio server for Linux, macOS, and Unix (now also runs on Windows).
 
 ### **Now developed at the GitHub site <https://github.com/FDH2/UxPlay> (where ALL user issues should be posted, and latest versions can be found).**
 
--   ***NEW in v1.71beta**: Support for (YouTube) HLS (HTTP Live
-    Streaming) video with the new "-hls" option.* Click on the airplay
-    icon in the YouTube app to stream video.
+-   ***NEW in v1.71**: Support for (YouTube) HLS (HTTP Live Streaming)
+    video with the new "-hls" option.* Click on the airplay icon in the
+    YouTube app to stream video.
 
 ## Highlights:
 
