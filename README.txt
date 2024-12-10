@@ -4,7 +4,10 @@
 
 -   ***NEW in v1.71**: Support for (YouTube) HLS (HTTP Live Streaming)
     video with the new "-hls" option.* Click on the airplay icon in the
-    YouTube app to stream video.
+    YouTube app to stream video. (You may need to wait until
+    advertisements have finished or been skipped before clicking the
+    YouTube airplay icon.) **Please report any issues with this new
+    feature of UxPlay**.
 
 ## Highlights:
 
@@ -257,7 +260,7 @@ libraries installed. Debian-based systems provide a package
 "build-essential" for use in compiling software. You also need
 pkg-config: if it is not found by "`which pkg-config`", install
 pkg-config or its work-alike replacement pkgconf. Also make sure that
-cmake\>=3.5 is installed: "`sudo apt install cmake`" (add
+cmake\>=3.10 is installed: "`sudo apt install cmake`" (add
 `build-essential` and `pkg-config` (or `pkgconf`) to this if needed).
 
 Make sure that your distribution provides OpenSSL 1.1.1 or later, and

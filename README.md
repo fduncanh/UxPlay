@@ -3,6 +3,7 @@
 ### **Now developed at the GitHub site [https://github.com/FDH2/UxPlay](https://github.com/FDH2/UxPlay) (where ALL user issues should be posted, and latest versions can be found).**
 
    * _**NEW in v1.71**: Support for (YouTube) HLS (HTTP Live Streaming) video with the new "-hls" option._   Click on the airplay icon in the YouTube app to stream video.
+   (You may need to wait until advertisements have finished or been skipped before clicking the YouTube airplay icon.)   **Please report any issues with this new feature of UxPlay**.
     
 ## Highlights:
 
@@ -207,7 +208,7 @@ You need a C/C++ compiler (e.g. g++) with the standard development libraries
 installed.  Debian-based systems provide a package "build-essential" for use
 in compiling software.   You also need pkg-config: if it is not found
 by "`which pkg-config`",  install pkg-config or its  work-alike replacement
-pkgconf.   Also make sure that cmake>=3.5 is installed:
+pkgconf.   Also make sure that cmake>=3.10 is installed:
 "`sudo apt install cmake`" (add ``build-essential`` and `pkg-config`
 (or ``pkgconf``)  to this if needed).
 
