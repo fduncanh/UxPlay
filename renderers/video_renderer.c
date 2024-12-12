@@ -3,7 +3,7 @@
  * Copyright (C) 2019 Florian Draschbacher
  * Modified for:
  * UxPlay - An open-source AirPlay mirroring server
- * Copyright (C) 2021-23 F. Duncanh
+ * Copyright (C) 2021-24 F. Duncanh
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,9 +20,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA
  */
 
-#include "video_renderer.h"
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
+#include "video_renderer.h"
 
 #define SECOND_IN_NSECS 1000000000UL
 #ifdef X_DISPLAY_FIX
@@ -203,7 +203,7 @@ void  video_renderer_init(logger_t *render_logger, const char *server_name, vide
     logger = render_logger;
     logger_debug = (logger_get_level(logger) >= LOGGER_DEBUG);
     video_terminate = false;
-    
+
     /* this call to g_set_application_name makes server_name appear in the  X11 display window title bar, */
     /* (instead of the program name uxplay taken from (argv[0]). It is only set one time. */
 
