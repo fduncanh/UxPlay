@@ -787,19 +787,12 @@ http_handler_action(raop_conn_t *conn, http_request_t *request, http_response_t 
         int uri_num = get_next_media_uri_id(conn->raop->airplay_video);
 	--uri_num;    // (next num is current num + 1)
 	store_media_data_playlist_by_num(conn->raop->airplay_video, playlist, uri_num);
-        float duration = 0.0f, next;
-        int count = 0;
-        ptr = strstr(fcup_response_data, "#EXTINF:");
-        while (ptr != NULL) {
-            char *end;
-            ptr += strlen("#EXTINF:");
-            next = strtof(ptr, &end);
-            duration += next;
-            count++;
-            ptr = strstr(end, "#EXTINF:");
-        }
+        float duration = 0.0f;
+        int count = analyze_media_playlist(playlist, &duration);
         if (count) {
-          printf("\n%s:\nplaylist has %5d chunks, total duration %9.3f secs\n", fcup_response_url, count, duration);
+        logger_log(conn->raop->logger, LOGGER_DEBUG,
+                   "\n%s:\nreceived media playlist has %5d chunks, total duration %9.3f secs\n",
+                    fcup_response_url, count, duration);
         }
     }
 
@@ -982,8 +975,12 @@ http_handler_hls(raop_conn_t *conn,  http_request_t *request, http_response_t *r
             char *data  = adjust_yt_condensed_playlist(media_playlist);
             *response_data = data;
             *response_datalen = strlen(data);
+            float duration = 0.0f;
+            int chunks = analyze_media_playlist(data, &duration);
+            logger_log(conn->raop->logger, LOGGER_INFO,
+                       "Requested media_playlist %s has %5d chunks, total duration %9.3f secs", url, chunks, duration); 
         } else {
-            printf("%s not found\n", url);
+            logger_log(conn->raop->logger, LOGGER_ERR,"Requested playlist %s not found", url);
             assert(0);
         }
     } 

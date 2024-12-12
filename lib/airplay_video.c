@@ -303,3 +303,19 @@ int get_media_uri_num(airplay_video_t *airplay_video, char * uri) {
     }
     return -1;
 }
+
+int analyze_media_playlist(char *playlist, float *duration) {
+    float next;
+    int count = 0;
+    char *ptr = strstr(playlist, "#EXTINF:");
+    *duration = 0.0f;
+    while (ptr != NULL) {
+        char *end;
+        ptr += strlen("#EXTINF:");
+        next = strtof(ptr, &end);
+        *duration += next;
+        count++;
+        ptr = strstr(end, "#EXTINF:");
+    }
+    return count;
+}

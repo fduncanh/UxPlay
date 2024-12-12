@@ -46,7 +46,7 @@ int store_media_data_playlist_by_num(airplay_video_t *airplay_video, char * medi
 char *get_media_playlist_by_num(airplay_video_t *airplay_video, int num);
 char *get_media_uri_by_num(airplay_video_t *airplay_video, int num);
 int get_media_uri_num(airplay_video_t *airplay_video, char * uri);
-
+int analyze_media_playlist(char *playlist, float *duration);
 
 void airplay_video_service_destroy(airplay_video_t *airplay_video);
 
