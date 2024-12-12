@@ -36,7 +36,7 @@ char *get_uri_local_prefix(airplay_video_t *airplay_video);
 int get_next_FCUP_RequestID(airplay_video_t *airplay_video);    
 void set_next_media_uri_id(airplay_video_t *airplay_video, int id);
 int get_next_media_uri_id(airplay_video_t *airplay_video);
-char * get_media_playlist_by_uri(airplay_video_t *airplay_video, const char *uri);
+int get_media_playlist_by_uri(airplay_video_t *airplay_video, const char *uri);
 void store_master_playlist(airplay_video_t *airplay_video, char *master_playlist);
 char *get_master_playlist(airplay_video_t *airplay_video);
 int get_num_media_uri(airplay_video_t *airplay_video);
@@ -46,7 +46,7 @@ int store_media_data_playlist_by_num(airplay_video_t *airplay_video, char * medi
 char *get_media_playlist_by_num(airplay_video_t *airplay_video, int num);
 char *get_media_uri_by_num(airplay_video_t *airplay_video, int num);
 int get_media_uri_num(airplay_video_t *airplay_video, char * uri);
-
+int analyze_media_playlist(char *playlist, float *duration);
 
 void airplay_video_service_destroy(airplay_video_t *airplay_video);
 

@@ -79,7 +79,7 @@ int airplay_video_service_init(raop_t *raop, unsigned short http_port,
       return -2;
     }
 
-    printf(" %p %p\n", airplay_video, get_airplay_video(raop));
+    //printf(" %p %p\n", airplay_video, get_airplay_video(raop));
 
     airplay_video->raop = raop;
 
@@ -247,15 +247,16 @@ char * get_media_playlist_by_num(airplay_video_t *airplay_video, int num) {
     return NULL;
 }
 
-char * get_media_playlist_by_uri(airplay_video_t *airplay_video, const char *uri) {
+int  get_media_playlist_by_uri(airplay_video_t *airplay_video, const char *uri) {
   /* Problem: there can be more than one StreamInf playlist with the same uri:
    * they differ by choice of partner Media (audio, subtitles) playlists 
    * If the same uri is requested again, one of the other ones  will be returned
    * (the least-previously-requested one will be served up)
-   */ 
+   */
+   // modified to return the  position of the media playlist in the master  playlist
     media_item_t *media_data_store = airplay_video->media_data_store;
     if (media_data_store == NULL) {
-        return NULL;
+        return -2;
     }
     int found = 0;;
     int num = -1;
@@ -276,11 +277,11 @@ char * get_media_playlist_by_uri(airplay_video_t *airplay_video, const char *uri
         }
     }
     if (found) {
-        printf("found %s\n", media_data_store[num].uri);
+        //printf("found %s\n", media_data_store[num].uri);
         ++media_data_store[num].access;
-        return media_data_store[num].playlist;
+        return num;
     }
-    return NULL;
+    return -1;
 }
 
 char * get_media_uri_by_num(airplay_video_t *airplay_video, int num) {
@@ -302,4 +303,20 @@ int get_media_uri_num(airplay_video_t *airplay_video, char * uri) {
         }
     }
     return -1;
+}
+
+int analyze_media_playlist(char *playlist, float *duration) {
+    float next;
+    int count = 0;
+    char *ptr = strstr(playlist, "#EXTINF:");
+    *duration = 0.0f;
+    while (ptr != NULL) {
+        char *end;
+        ptr += strlen("#EXTINF:");
+        next = strtof(ptr, &end);
+        *duration += next;
+        count++;
+        ptr = strstr(end, "#EXTINF:");
+    }
+    return count;
 }
