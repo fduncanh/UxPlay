@@ -413,22 +413,22 @@ httpd_thread(void *arg)
             logger_log(httpd->logger, LOGGER_DEBUG, "httpd receiving on socket %d, connection %d",
                        connection->socket_fd, i);
             if (logger_debug) {
-                printf("\nhttpd: current connections:\n");
+                logger_log(httpd->logger, LOGGER_DEBUG,"\nhttpd: current connections:");
                 for (int i = 0; i < httpd->max_connections; i++) {
                     http_connection_t *connection = &httpd->connections[i];
                     if(!connection->connected) {
                         continue;
                     }
                     if (!FD_ISSET(connection->socket_fd, &rfds)) {
-                        printf("connection %d type %d socket %d  conn %p %s\n", i,
-                               connection->type, connection->socket_fd,
-                               connection->user_data, typename [connection->type]);
+                        logger_log(httpd->logger, LOGGER_DEBUG, "connection %d type %d socket %d  conn %p %s", i,
+                                   connection->type, connection->socket_fd,
+                                   connection->user_data, typename [connection->type]);
 		    } else {
-                        printf("connection %d type %d socket %d  conn %p %s ACTIVE CONNECTION\n", i, connection->type,
-                               connection->socket_fd, connection->user_data, typename [connection->type]);
+		      logger_log(httpd->logger, LOGGER_DEBUG, "connection %d type %d socket %d  conn %p %s ACTIVE CONNECTION",
+                                 i, connection->type, connection->socket_fd, connection->user_data, typename [connection->type]);
                     }
                 }
-		printf("\n");
+		logger_log(httpd->logger, LOGGER_DEBUG, " ");
 	    }
             /* reverse-http responses from the client must not be sent to the llhttp parser:
              * such messages start with "HTTP/1.1" */

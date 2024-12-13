@@ -541,9 +541,6 @@ raop_rtp_mirror_thread(void *arg)
                 raop_rtp_mirror->callbacks.video_process(raop_rtp_mirror->callbacks.cls, raop_rtp_mirror->ntp, &video_data);
                 free(payload_out);
                 break;
-                //char *str3 =  utils_data_to_string(payload_out, video_data.data_len, 16);
-                //printf("%s\n", str3);
-                //free (str3);
             case 0x01:
                 /* 128-byte observed packet header structure 
                    bytes 0-15: length + timestamp
@@ -609,13 +606,12 @@ raop_rtp_mirror_thread(void *arg)
                     free(sps_pps);
                     sps_pps = NULL;
                 }
-		/* test for a H265 VPS/SPs/PPS */
+		/* test for a H265 VPS/SPS/PPS */
                 unsigned char hvc1[] = { 0x68, 0x76, 0x63, 0x31 };
 
                 if (!memcmp(payload + 4, hvc1, 4)) {
                     /* hvc1 HECV detected */
                     codec = VIDEO_CODEC_H265;
-                    printf("h265 detected\n");
                     h265_video = true;
                     raop_rtp_mirror->callbacks.video_set_codec(raop_rtp_mirror->callbacks.cls, codec);
                     unsigned char vps_start_code[] = { 0xa0, 0x00, 0x01, 0x00 };
@@ -687,10 +683,6 @@ raop_rtp_mirror_thread(void *arg)
                     memcpy(ptr, nal_start_code, 4);
                     ptr += 4;
                     memcpy(ptr, pps, pps_size);
-                    // printf (" HEVC (hvc1) vps + sps + pps NALU\n");
-                    //char *str = utils_data_to_string(sps_pps, sps_pps_len, 16);
-                    //printf("%s\n", str);
-                    //free (str);
                 } else {
                     codec = VIDEO_CODEC_H264;
                     h265_video = false;

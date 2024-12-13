@@ -311,19 +311,16 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
                     char * plist_xml;
                     uint32_t plist_len;
                     plist_to_xml(req_root_node, &plist_xml, &plist_len);
-		    printf("%s\n",plist_xml);
-                    //logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", plist_xml);
+                    logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", plist_xml);
                     free(plist_xml);
                     plist_free(req_root_node);
                 } else if (data_is_text) {
                     char *data_str = utils_data_to_text((char *) request_data, request_datalen);
-                    printf("%s\n", data_str);
-                    //logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);                    
+                    logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);                    
                     free(data_str);
                 } else {
                     char *data_str =  utils_data_to_string((unsigned char *) request_data, request_datalen, 16);
-                    printf("%s\n", data_str);
-                    //logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);
+                    logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);
                     free(data_str);
                 }
             }
@@ -449,18 +446,15 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
                 uint32_t plist_len;
                 plist_to_xml(res_root_node, &plist_xml, &plist_len);
                 plist_free(res_root_node);
-                printf("%s\n", plist_xml);
-                //logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", plist_xml);
+                logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", plist_xml);
                 free(plist_xml);
             } else if (data_is_text) {
                 char *data_str = utils_data_to_text((char*) response_data, response_datalen);
-                printf("%s\n", data_str);
-                //logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);                    
+                logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);                    
                 free(data_str);
             } else {
                 char *data_str = utils_data_to_string((unsigned char *) response_data, response_datalen, 16);
-                printf("%s\n", data_str);
-                //logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);
+                logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);
                 free(data_str);
             }
         }

@@ -343,7 +343,6 @@ int gcm_decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *pl
         return plaintext_len;
     } else {
         /* Verify failed */
-	printf("failed\n");
         return -1;
     }
 }

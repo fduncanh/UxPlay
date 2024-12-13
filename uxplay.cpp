@@ -1575,7 +1575,6 @@ extern "C" void conn_reset (void *cls, int timeouts, bool reset_video) {
         LOGI("   Sometimes the network connection may recover after a longer delay:\n"
              "   the default timeout limit n = %d can be changed with the \"-reset n\" option", NTP_TIMEOUT_LIMIT);
     }
-    printf("reset_video %d\n",(int) reset_video);
     if (!nofreeze) {
         close_window = reset_video;    /* leave "frozen" window open if reset_video is false */
     }
@@ -1880,9 +1879,7 @@ extern "C" void on_video_acquire_playback_info (void *cls, playback_info_t *play
         LOGI(" video has finished, %f", playback_info->position);
         playback_info->position = -1.0;
         playback_info->duration = -1.0;
-        printf("about to stop\n");
         video_renderer_stop();
-        printf("stopped\n");
     }
 }
 
@@ -2083,8 +2080,8 @@ static void read_config_file(const char * filename, const char * uxplay_name) {
 void real_main (int argc, char *argv[]);
 
 int main (int argc, char *argv[]) {
-  printf("*=== Using gst_macos_main wrapper for GStreamer >= 1.22 on macOS ===*\n");
-  return  gst_macos_main ((GstMainFunc) real_main, argc, argv , NULL);
+    LOGI("*=== Using gst_macos_main wrapper for GStreamer >= 1.22 on macOS ===*");
+    return  gst_macos_main ((GstMainFunc) real_main, argc, argv , NULL);
 }
 
 void real_main (int argc, char *argv[]) {
@@ -2124,22 +2121,22 @@ int main (int argc, char *argv[]) {
     }
     if (dump_video) {
         if (video_dump_limit > 0) {
-             printf("dump video using \"-vdmp %d %s\"\n", video_dump_limit, video_dumpfile_name.c_str());
+             LOGI("dump video using \"-vdmp %d %s\"", video_dump_limit, video_dumpfile_name.c_str());
 	} else {
-             printf("dump video using \"-vdmp %s\"\n", video_dumpfile_name.c_str());
+             LOGI("dump video using \"-vdmp %s\"", video_dumpfile_name.c_str());
         }
     }
     if (dump_audio) {
         if (audio_dump_limit > 0) {
-            printf("dump audio using \"-admp %d %s\"\n", audio_dump_limit, audio_dumpfile_name.c_str());
+            LOGI("dump audio using \"-admp %d %s\"", audio_dump_limit, audio_dumpfile_name.c_str());
         } else {
-            printf("dump audio using \"-admp %s\"\n",  audio_dumpfile_name.c_str());
+            LOGI("dump audio using \"-admp %s\"",  audio_dumpfile_name.c_str());
         }
     }
 
 #if __APPLE__
     /* force use of -nc option on macOS */
-    LOGI("macOS detected: use -nc option as workaround for GStreamer problem");
+    LOGI("macOS detected: using -nc option as workaround for GStreamer problem");
     new_window_closing_behavior = false;
 #endif
 
