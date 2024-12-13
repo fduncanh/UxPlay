@@ -4,10 +4,9 @@ id="uxplay-1.71-airplay-mirror-and-airplay-audio-server-for-linux-macos-and-unix
 (now also runs on Windows).</h1>
 <h3
 id="now-developed-at-the-github-site-httpsgithub.comfdh2uxplay-where-all-user-issues-should-be-posted-and-latest-versions-can-be-found."><strong>Now
-developed at the GitHub site <a
-href="https://github.com/FDH2/UxPlay">https://github.com/FDH2/UxPlay</a>
-(where ALL user issues should be posted, and latest versions can be
-found).</strong></h3>
+developed at the GitHub site <a href="https://github.com/FDH2/UxPlay"
+class="uri">https://github.com/FDH2/UxPlay</a> (where ALL user issues
+should be posted, and latest versions can be found).</strong></h3>
 <ul>
 <li><em><strong>NEW in v1.71</strong>: Support for (YouTube) HLS (HTTP
 Live Streaming) video with the new “-hls” option.</em> Click on the
@@ -669,6 +668,7 @@ framebuffer video, use <code>&lt;videosink&gt;</code> =
 <li>Tip: to start UxPlay on a remote host (such as a Raspberry Pi) using
 ssh:</li>
 </ul>
+<!-- -->
 <pre><code>   ssh user@remote_host
    export DISPLAY=:0
    nohup uxplay [options] &gt; FILE &amp;</code></pre>
@@ -691,9 +691,9 @@ done with package managers <a
 href="http://www.macports.org">MacPorts</a>
 (<code>sudo port install cmake</code>), <a
 href="http://brew.sh">Homebrew</a> (<code>brew install cmake</code>), or
-by a download from <a
-href="https://cmake.org/download/">https://cmake.org/download/</a>. Also
-install <code>git</code> if you will use it to fetch UxPlay.</p>
+by a download from <a href="https://cmake.org/download/"
+class="uri">https://cmake.org/download/</a>. Also install
+<code>git</code> if you will use it to fetch UxPlay.</p>
 <p>Next install libplist and openssl-3.x. Note that static versions of
 these libraries will be used in the macOS builds, so they can be
 uninstalled after building uxplay, if you wish.</p>
@@ -709,11 +709,11 @@ automake, libtool, <em>etc.</em>) to be installed.</p>
 <p>Next get the latest macOS release of GStreamer-1.0.</p>
 <p><strong>Using “Official” GStreamer (Recommended for both MacPorts and
 Homebrew users)</strong>: install the GStreamer release for macOS from
-<a
-href="https://gstreamer.freedesktop.org/download/">https://gstreamer.freedesktop.org/download/</a>.
-(This release contains its own pkg-config, so you don’t have to install
-one.) Install both the gstreamer-1.0 and gstreamer-1.0-devel packages.
-After downloading, Shift-Click on them to install (they install to
+<a href="https://gstreamer.freedesktop.org/download/"
+class="uri">https://gstreamer.freedesktop.org/download/</a>. (This
+release contains its own pkg-config, so you don’t have to install one.)
+Install both the gstreamer-1.0 and gstreamer-1.0-devel packages. After
+downloading, Shift-Click on them to install (they install to
 /Library/FrameWorks/GStreamer.framework). Homebrew or MacPorts users
 should <strong>not</strong> install (or should uninstall) the GStreamer
 supplied by their package manager, if they use the “official”
@@ -1350,8 +1350,7 @@ like</p>
 +     lo IPv4 UxPlay                                        AirPlay Remote Video local
 +   eno1 IPv6 863EA27598FE@UxPlay                           AirTunes Remote Audio local
 +   eno1 IPv4 863EA27598FE@UxPlay                           AirTunes Remote Audio local
-+     lo IPv4 863EA27598FE@UxPlay                           AirTunes Remote Audio local
-</code></pre>
++     lo IPv4 863EA27598FE@UxPlay                           AirTunes Remote Audio local</code></pre>
 <p>If only the loopback (“lo”) entries are shown, a firewall on the
 UxPlay host is probably blocking full DNS-SD service, and you need to
 open the default UDP port 5353 for mDNS requests, as loopback-based
@@ -1582,8 +1581,8 @@ an AppleTV6,2 with sourceVersion 380.20.1 (an AppleTV 4K 1st gen,
 introduced 2017, running tvOS 12.2.1), so it does not seem to matter
 what version UxPlay claims to be.</p>
 <h1 id="changelog">Changelog</h1>
-<p>1.71 2024-12-10 Add support for HTTP Live Streaming (HLS), initially
-only for YouTube movies</p>
+<p>1.71 2024-12-13 Add support for HTTP Live Streaming (HLS), initially
+only for YouTube movies. Fix issue with NTP timeout on Windows.</p>
 <p>1.70 2024-10-04 Add support for 4K (h265) video (resolution 3840 x
 2160). Fix issue with GStreamer &gt;= 1.24 when client sleeps, then
 wakes.</p>
@@ -1698,7 +1697,7 @@ and added -rpigl (OpenGL) and -rpiwl (Wayland) options for RPi Desktop
 systems. Also modified timestamps from “DTS” to “PTS” for latency
 improvement, plus internal cleanups.</p>
 <p>1.49 2022-03-28 Addded options for dumping video and/or audio to
-file, for debugging, etc. h264 PPS/SPS NALU’s are shown with -d. Fixed
+file, for debugging, etc. h264 PPS/SPS NALU’s are shown with -d. Fixed
 video-not-working for M1 Mac clients.</p>
 <p>1.48 2022-03-11 Made the GStreamer video pipeline fully configurable,
 for use with hardware h264 decoding. Support for Raspberry Pi.</p>
@@ -1762,13 +1761,13 @@ closed, with uxplay still running. Corrected in v. 1.34</p>
 <p>If you need to do this, note that you may be able to use a newer
 version (OpenSSL-3.0.1 is known to work). You will need the standard
 development toolset (autoconf, automake, libtool). Download the source
-code from <a
-href="https://www.openssl.org/source/">https://www.openssl.org/source/</a>.
-Install the downloaded openssl by opening a terminal in your Downloads
-directory, and unpacking the source distribution: (“tar -xvzf
-openssl-3.0.1.tar.gz ; cd openssl-3.0.1”). Then build/install with
-“./config ; make ; sudo make install_dev”. This will typically install
-the needed library <code>libcrypto.*</code>, either in /usr/local/lib or
+code from <a href="https://www.openssl.org/source/"
+class="uri">https://www.openssl.org/source/</a>. Install the downloaded
+openssl by opening a terminal in your Downloads directory, and unpacking
+the source distribution: (“tar -xvzf openssl-3.0.1.tar.gz ; cd
+openssl-3.0.1”). Then build/install with “./config ; make ; sudo make
+install_dev”. This will typically install the needed library
+<code>libcrypto.*</code>, either in /usr/local/lib or
 /usr/local/lib64.</p>
 <p><em>(Ignore the following for builds on MacOS:)</em> On some systems
 like Debian or Ubuntu, you may also need to add a missing entry
@@ -1782,8 +1781,9 @@ can avoid this step by installing libplist-dev and libplist3 from Debian
 10 or Ubuntu 18.04.)</em> As well as the usual build tools (autoconf,
 automake, libtool), you may need to also install some libpython*-dev
 package. Download the latest source with git from <a
-href="https://github.com/libimobiledevice/libplist">https://github.com/libimobiledevice/libplist</a>,
-or get the source from the Releases section (use the *.tar.bz2 release,
+href="https://github.com/libimobiledevice/libplist"
+class="uri">https://github.com/libimobiledevice/libplist</a>, or get the
+source from the Releases section (use the *.tar.bz2 release,
 <strong>not</strong> the *.zip or *.tar.gz versions): download <a
 href="https://github.com/libimobiledevice/libplist/releases/download/2.3.0/libplist-2.3.0.tar.bz2">libplist-2.3.0</a>,
 then unpack it (“tar -xvjf libplist-2.3.0.tar.bz2 ; cd libplist-2.3.0”),

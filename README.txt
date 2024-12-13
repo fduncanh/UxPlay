@@ -1623,8 +1623,8 @@ what version UxPlay claims to be.
 
 # Changelog
 
-1.71 2024-12-10 Add support for HTTP Live Streaming (HLS), initially
-only for YouTube movies
+1.71 2024-12-13 Add support for HTTP Live Streaming (HLS), initially
+only for YouTube movies. Fix issue with NTP timeout on Windows.
 
 1.70 2024-10-04 Add support for 4K (h265) video (resolution 3840 x
 2160). Fix issue with GStreamer \>= 1.24 when client sleeps, then wakes.
@@ -1758,7 +1758,7 @@ systems. Also modified timestamps from "DTS" to "PTS" for latency
 improvement, plus internal cleanups.
 
 1.49 2022-03-28 Addded options for dumping video and/or audio to file,
-for debugging, etc. h264 PPS/SPS NALU's are shown with -d. Fixed
+for debugging, etc. h264 PPS/SPS NALU's are shown with -d. Fixed
 video-not-working for M1 Mac clients.
 
 1.48 2022-03-11 Made the GStreamer video pipeline fully configurable,
