@@ -54,7 +54,7 @@ struct video_renderer_s {
     const char *codec;
     bool autovideo, state_pending;
     int id;
-    gboolean terminate;
+    gboolean terminate;    //check if this is used
     gint64 duration;
     gint buffering_level;
 #ifdef  X_DISPLAY_FIX
@@ -70,6 +70,12 @@ static int n_renderers = NCODECS;
 static char h264[] = "h264";
 static char h265[] = "h265";
 static char hls[] = "hls";
+
+void terminate_current_video() {
+    logger_log(logger, LOGGER_DEBUG, "terminate GStreamer video renderer");
+    video_renderer_stop();
+    video_renderer_destroy();
+}
 
 static void append_videoflip (GString *launch, const videoflip_t *flip, const videoflip_t *rot) {
     /* videoflip image transform */

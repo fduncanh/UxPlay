@@ -149,6 +149,8 @@ static std::string url = "";
 static guint gst_x11_window_id = 0;
 static guint gst_hls_position_id = 0;
 static bool preserve_connections = false;
+static bool hls_video = false;
+static bool video_is_reset = false;
 
 /* logging */
 
@@ -413,6 +415,7 @@ static void main_loop()  {
     g_assert(n_renderers <= 2);
     GMainLoop *loop = g_main_loop_new(NULL,FALSE);
     relaunch_video = false;
+    video_is_reset = false;
     if (use_video) {
         relaunch_video = true;
         if (url.empty()) {
@@ -1510,6 +1513,8 @@ static bool check_blocked_client(char *deviceid) {
 
 extern "C" void video_reset(void *cls) {
     LOGD("video_reset");
+    terminate_current_video();
+    video_is_reset = true;
     url.erase();
     reset_loop = true;
     remote_clock_offset = 0;
@@ -2302,8 +2307,10 @@ int main (int argc, char *argv[]) {
             raop_stop(raop);
         }
         if (use_audio) audio_renderer_stop();
-        if (use_video && (close_window || preserve_connections)) {
-            video_renderer_destroy();
+        if (use_video && (close_window || preserve_connections || hls_video)) {
+            if (!video_is_reset) {
+                video_renderer_destroy();    // not needed if video_is_reset
+            }
             if (!preserve_connections) {
                 raop_destroy_airplay_video(raop);
                 url.erase();
@@ -2311,6 +2318,7 @@ int main (int argc, char *argv[]) {
             }
 	    preserve_connections = false;
 	    const char *uri = (url.empty() ? NULL : url.c_str());
+	    hls_video = (uri ? true : false);
             video_renderer_init(render_logger, server_name.c_str(), videoflip, video_parser.c_str(),
                                 video_decoder.c_str(), video_converter.c_str(), videosink.c_str(),
                                 videosink_options.c_str(), fullscreen, video_sync, h265_support, uri);

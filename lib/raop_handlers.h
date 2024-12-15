@@ -1054,7 +1054,12 @@ raop_handler_teardown(raop_conn_t *conn,
         }
     }
     plist_free(req_root_node);
-    if (conn->raop->callbacks.conn_teardown) {
+    if (httpd_count_connection_type(conn->raop->httpd, CONNECTION_TYPE_HLS)) {
+        /* if current video is  HLS, call video_reset callback: */
+        if (conn->raop->callbacks.video_reset) {
+            conn->raop->callbacks.video_reset(conn->raop->callbacks.cls);
+        }
+    } else if (conn->raop->callbacks.conn_teardown) {
         conn->raop->callbacks.conn_teardown(conn->raop->callbacks.cls, &teardown_96, &teardown_110);
     }
     logger_log(conn->raop->logger, LOGGER_DEBUG, "TEARDOWN request,  96=%d, 110=%d", teardown_96, teardown_110);
