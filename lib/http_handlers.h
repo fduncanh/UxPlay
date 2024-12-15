@@ -784,7 +784,11 @@ http_handler_action(raop_conn_t *conn, http_request_t *request, http_response_t 
 	memcpy(playlist, fcup_response_data, fcup_response_datalen);
         int uri_num = get_next_media_uri_id(conn->raop->airplay_video);
 	--uri_num;    // (next num is current num + 1)
-	store_media_data_playlist_by_num(conn->raop->airplay_video, playlist, uri_num);
+	int ret = store_media_data_playlist_by_num(conn->raop->airplay_video, playlist, uri_num);
+        if (ret < 0) {
+            logger_log(conn->raop->logger, LOGGER_ERR, "failed to store media_data_playlist: uri_num = %d, ret = %d",
+                       uri_num, ret);
+        }
         float duration = 0.0f;
         int count = analyze_media_playlist(playlist, &duration);
         if (count) {
