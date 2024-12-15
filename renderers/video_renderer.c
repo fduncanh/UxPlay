@@ -721,11 +721,10 @@ bool video_get_playback_info(double *duration, double *position, float *rate) {
     *duration = 0.0;
     *position = -1.0;
     *rate = 0.0f;
-    if (!renderer) {
-   
+    if (!renderer || !renderer->bus) {
         return true;
     }
-    gst_element_get_state(renderer->pipeline, &state, NULL, 0);
+    gst_element_get_state(renderer->pipeline, &state, NULL, 100 *GST_MSECOND);
     *rate = 0.0f;
     switch (state) {
     case GST_STATE_PLAYING:
