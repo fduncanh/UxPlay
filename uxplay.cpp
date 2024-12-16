@@ -1851,27 +1851,27 @@ extern "C" void on_video_play(void *cls, const char* location, const float start
     reset_loop = true;
     relaunch_video = true;
     preserve_connections = true;
-    LOGD("********************on_video_play: location = %s***********************", url.c_str());
+    LOGI("****** on_video_play: location = %s ******", url.c_str());
 }
 
 extern "C" void on_video_scrub(void *cls, const float position) {
-    LOGI("on_video_scrub: position = %7.5f\n", position);
+    LOGI("****** on_video_scrub: position = %7.5f ******", position);
     video_renderer_seek(position);
 }
 
 extern "C" void on_video_rate(void *cls, const float rate) {
-    LOGI("on_video_rate = %7.5f\n", rate);
+    LOGI("****** on_video_rate = %7.5f ******", rate);
     if (rate == 1.0f) {
         video_renderer_resume();
     } else if (rate ==  0.0f) {
         video_renderer_pause();
     } else  {
-        LOGI("on_video_rate: ignoring unexpected value rate = %f\n", rate);
+        LOGI(" ******on_video_rate: ignoring unexpected value rate = %f ******", rate);
     }
 }
 
 extern "C" void on_video_stop(void *cls) {
-    LOGI("on_video_stop\n");
+    LOGI("****** on_video_stop ******");
 }
 
 extern "C" void on_video_acquire_playback_info (void *cls, playback_info_t *playback_info) {
@@ -1879,7 +1879,7 @@ extern "C" void on_video_acquire_playback_info (void *cls, playback_info_t *play
     LOGD("on_video_acquire_playback info\n");
     bool still_playing = video_get_playback_info(&playback_info->duration, &playback_info->position,
                                                  &playback_info->rate);
-    LOGD("on_video_acquire_playback info done\n");
+    LOGD("on_video_acquire_playback info done");
     if (!still_playing) {
         LOGI(" video has finished, %f", playback_info->position);
         playback_info->position = -1.0;

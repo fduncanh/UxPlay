@@ -336,7 +336,7 @@ http_handler_reverse(raop_conn_t *conn, http_request_t *request, http_response_t
     const char *purpose = http_request_get_header(request, "X-Apple-Purpose");
     const char *connection = http_request_get_header(request, "Connection");
     const char *upgrade = http_request_get_header(request, "Upgrade");
-    logger_log(conn->raop->logger, LOGGER_INFO, "client requested reverse connection: %s; purpose: %s  \"%s\"",
+    logger_log(conn->raop->logger, LOGGER_DEBUG, "client requested reverse connection: %s; purpose: %s  \"%s\"",
                connection, upgrade, purpose);
 
     httpd_set_connection_type(conn->raop->httpd, (void *) conn, CONNECTION_TYPE_PTTH);

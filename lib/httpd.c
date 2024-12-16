@@ -441,7 +441,7 @@ httpd_thread(void *arg)
                 while (readstart < 8) {
                     ret = recv(connection->socket_fd, buffer + readstart, sizeof(buffer) - 1 - readstart, 0);
                     if (ret == 0) {
-                        logger_log(httpd->logger, LOGGER_INFO, "Connection closed for socket %d",
+                        logger_log(httpd->logger, LOGGER_DEBUG, "Connection closed by peer on socket %d (new request)",
                                    connection->socket_fd);
                         break;
                     } else if (ret == -1) {
@@ -464,8 +464,8 @@ httpd_thread(void *arg)
             } else {
                 ret = recv(connection->socket_fd, buffer, sizeof(buffer) - 1, 0);
                 if (ret == 0) {
-                    logger_log(httpd->logger, LOGGER_INFO, "Connection closed for socket %d",
-                               connection->socket_fd);
+                    logger_log(httpd->logger, LOGGER_INFO, "Connection closed by peer on  socket %d %s",
+                               connection->socket_fd, typename[connection->type]);
                     httpd_remove_connection(httpd, connection);
                     continue;
                 }
@@ -475,7 +475,7 @@ httpd_thread(void *arg)
                  * GET /event reverse HTTP request from the server */
                 if (ret && logger_debug) {
                     buffer[ret] = '\0';
-                    logger_log(httpd->logger, LOGGER_INFO, "<<<< received response from client"
+                    logger_log(httpd->logger, LOGGER_DEBUG, "<<<< received response from client"
                                " (reversed HTTP = \"PTTH/1.0\") connection"
                                " on socket %d:\n%s\n", connection->socket_fd, buffer);
                 }
@@ -502,7 +502,7 @@ httpd_thread(void *arg)
                     const char *method = http_request_get_method(connection->request);
                     const char *url = http_request_get_url(connection->request);
                     const char *protocol = http_request_get_protocol(connection->request);
-                    logger_log(httpd->logger, LOGGER_INFO, "httpd request received on socket %d, "
+                    logger_log(httpd->logger, LOGGER_DEBUG, "httpd request received on socket %d, "
                                "connection %d, method = %s, url = %s, protocol = %s",
                                connection->socket_fd, i, method, url, protocol);
                 }
@@ -550,7 +550,7 @@ httpd_thread(void *arg)
         if (!connection->connected) {
             continue;
         }
-        logger_log(httpd->logger, LOGGER_INFO, "Removing connection for socket %d", connection->socket_fd);
+        logger_log(httpd->logger, LOGGER_INFO, "Removing connection for socket %d %s", connection->socket_fd, typename[connection->type]);
         httpd_remove_connection(httpd, connection);
     }
 

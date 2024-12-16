@@ -449,9 +449,18 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response) {
                 logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", plist_xml);
                 free(plist_xml);
             } else if (data_is_text) {
-                char *data_str = utils_data_to_text((char*) response_data, response_datalen);
-                logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);                    
-                free(data_str);
+	        size_t len = 2000;
+	        if (hls_request && response_datalen > 2 * len) {
+                    char *data_str1 = utils_data_to_text((char*) response_data, len);
+                    char *data_str2 = utils_data_to_text((char*) response_data + response_datalen - len, len);
+                    logger_log(conn->raop->logger, LOGGER_DEBUG, "%s\n... (OMITTED, len = %d) ...\n%s", data_str1, response_datalen,  data_str2);
+                    free (data_str1);
+                    free (data_str2);
+		} else {
+                    char *data_str = utils_data_to_text((char*) response_data, response_datalen);
+                    logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);
+                    free(data_str);
+                }
             } else {
                 char *data_str = utils_data_to_string((unsigned char *) response_data, response_datalen, 16);
                 logger_log(conn->raop->logger, LOGGER_DEBUG, "%s", data_str);

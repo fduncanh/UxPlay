@@ -537,7 +537,15 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
     g_assert(type != -1);
 
     if (logger_debug) {
-        g_print("GStreamer %s bus message: %s %s\n", renderer_type[type]->codec, GST_MESSAGE_SRC_NAME(message), GST_MESSAGE_TYPE_NAME(message));
+        if (GST_MESSAGE_TYPE (message) == GST_MESSAGE_STATE_CHANGED) {
+            GstState old_state, pending_state, new_state;
+            gst_message_parse_state_changed(message, &old_state, &pending_state, &new_state);
+            g_print("GStreamer %s bus message: %s %s: old: %s, pending: %s, new: %s\n", renderer_type[type]->codec,
+                    GST_MESSAGE_SRC_NAME(message), GST_MESSAGE_TYPE_NAME(message),
+                    gst_element_state_get_name(old_state),gst_element_state_get_name(pending_state),gst_element_state_get_name(new_state));
+        } else {
+            g_print("GStreamer %s bus message: %s %s\n", renderer_type[type]->codec, GST_MESSAGE_SRC_NAME(message), GST_MESSAGE_TYPE_NAME(message));
+        }
     }
 
     if (logger_debug && hls_video) {
