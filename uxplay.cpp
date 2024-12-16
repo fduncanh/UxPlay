@@ -151,6 +151,7 @@ static guint gst_hls_position_id = 0;
 static bool preserve_connections = false;
 static bool hls_video = false;
 static bool video_is_reset = false;
+static float hls_start_position = 0.0f;
 
 /* logging */
 
@@ -1851,6 +1852,7 @@ extern "C" void on_video_play(void *cls, const char* location, const float start
     reset_loop = true;
     relaunch_video = true;
     preserve_connections = true;
+    hls_start_position = start_position;
     LOGI("****** on_video_play: location = %s ******", url.c_str());
 }
 
@@ -2323,6 +2325,11 @@ int main (int argc, char *argv[]) {
                                 video_decoder.c_str(), video_converter.c_str(), videosink.c_str(),
                                 videosink_options.c_str(), fullscreen, video_sync, h265_support, uri);
             video_renderer_start();
+            if (hls_video && hls_start_position > 0.0f) {
+                printf("hls_start_position  =  %f\n", hls_start_position);
+                video_renderer_seek(hls_start_position);
+                hls_start_position = 0.0f;
+            }
         }
         if (relaunch_video) {
             unsigned short port = raop_get_port(raop);

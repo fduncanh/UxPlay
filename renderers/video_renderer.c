@@ -766,8 +766,8 @@ void video_renderer_seek(float position) {
     gint64 seek_position = (gint64) pos;
     seek_position =  seek_position < 1000 ? 1000 : seek_position;
     seek_position =  seek_position > renderer->duration  - 1000 ? renderer->duration - 1000: seek_position;
-    g_print("SCRUB: seek to %f secs =  %" GST_TIME_FORMAT ", duration = %" GST_TIME_FORMAT "\n", position,
-            GST_TIME_ARGS(seek_position),  GST_TIME_ARGS(renderer->duration));
+    g_print("SCRUB: seek to %f secs =  %" GST_STIME_FORMAT ", duration = %" GST_STIME_FORMAT "\n", position,
+            GST_STIME_ARGS(seek_position),  GST_STIME_ARGS(renderer->duration));
     gboolean result = gst_element_seek_simple(renderer->pipeline, GST_FORMAT_TIME,
                                               (GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT),
                                               seek_position);

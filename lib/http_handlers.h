@@ -910,11 +910,12 @@ http_handler_play(raop_conn_t *conn, http_request_t *request, http_response_t *r
 
         plist_t req_start_position_seconds_node = plist_dict_get_item(req_root_node, "Start-Position-Seconds");
         if (!req_start_position_seconds_node) {
-            logger_log(conn->raop->logger, LOGGER_INFO, "No Start-Position-Seconds in Play request");	    
-         } else {
-             double start_position = 0.0;
-             plist_get_real_val(req_start_position_seconds_node, &start_position);
-	     start_position_seconds = (float) start_position;
+            logger_log(conn->raop->logger, LOGGER_INFO, "No Start-Position-Seconds in Play request");
+            start_position_seconds = 0.0f;
+        } else {
+            double start_position = 0.0;
+            plist_get_real_val(req_start_position_seconds_node, &start_position);
+	    start_position_seconds = (float) start_position;
         }
 	set_start_position_seconds(conn->raop->airplay_video, (float) start_position_seconds);
     }
