@@ -8,12 +8,19 @@ developed at the GitHub site <a href="https://github.com/FDH2/UxPlay"
 class="uri">https://github.com/FDH2/UxPlay</a> (where ALL user issues
 should be posted, and latest versions can be found).</strong></h3>
 <ul>
-<li><em><strong>NEW in v1.71</strong>: Support for (YouTube) HLS (HTTP
-Live Streaming) video with the new “-hls” option.</em> Click on the
-airplay icon in the YouTube app to stream video. (You may need to wait
-until advertisements have finished or been skipped before clicking the
-YouTube airplay icon.) <strong>Please report any issues with this new
-feature of UxPlay</strong>.</li>
+<li><p><em><strong>NEW in v1.71</strong>: Support for (YouTube) HLS
+(HTTP Live Streaming) video with the new “-hls” option.</em> Click on
+the airplay icon in the YouTube app to stream video. (You may need to
+wait until advertisements have finished or been skipped before clicking
+the YouTube airplay icon.) <strong>Please report any issues with this
+new feature of UxPlay</strong>.</p>
+<p><strong><em>NEWS</em></strong>: macOS Sequoia clients (15.2 and maybe
+earlier) fail to synchronize their clocks with UxPlay using NTP
+protocol. It is not clear if this is a new macOS bug or feature. UxPlay
+does not need such clock synchronization, and the latest UxPlay code has
+been modified to not use it. Users of Uxplay releases 1.71.1 or earlier
+should use options “-vsync no -reset 0” with macOS Sequoia clients, or
+update to latest UxPlay code.</p></li>
 </ul>
 <h2 id="highlights">Highlights:</h2>
 <ul>

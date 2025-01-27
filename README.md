@@ -9,6 +9,14 @@
     YouTube airplay icon.) **Please report any issues with this new
     feature of UxPlay**.
 
+    ***NEWS***: macOS Sequoia clients (15.2 and maybe earlier) fail to
+    synchronize their clocks with UxPlay using NTP protocol.  It is not
+    clear if this is a new macOS bug or feature.  UxPlay does not need such
+    clock synchronization, and the latest UxPlay code has been modified to not
+    use it.  Users of Uxplay releases 1.71.1 or earlier should use options
+    "-vsync no -reset 0" with macOS Sequoia clients, or update to latest
+    UxPlay code.
+
 ## Highlights:
 
 -   GPLv3, open source.

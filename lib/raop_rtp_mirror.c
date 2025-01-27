@@ -201,6 +201,7 @@ raop_rtp_mirror_thread(void *arg)
     const char h265[] = "h265";
     bool unsupported_codec = false;
     bool video_stream_suspended = false;
+    bool first_packet = true;
     
     while (1) {
         fd_set rfds;
@@ -327,6 +328,11 @@ raop_rtp_mirror_thread(void *arg)
 	    }
             ntp_timestamp_raw = byteutils_get_long(packet, 8);
             ntp_timestamp_remote = raop_ntp_timestamp_to_nano_seconds(ntp_timestamp_raw, false);
+            if (first_packet) {
+	        uint64_t offset  = raop_ntp_get_local_time() - ntp_timestamp_remote;
+                raop_ntp_set_video_arrival_offset(raop_rtp_mirror->ntp, &offset);
+                first_packet = false;
+            }
 
 	    /* packet[4] + packet[5] identify the payload type:   values seen are:               *
              * 0x00 0x00: encrypted packet containing a non-IDR  type 1 VCL NAL unit             *
@@ -389,10 +395,10 @@ raop_rtp_mirror_thread(void *arg)
 
                 ntp_timestamp_local = raop_ntp_convert_remote_time(raop_rtp_mirror->ntp, ntp_timestamp_remote);
                 if (logger_debug) {
-                    uint64_t ntp_now = raop_ntp_get_local_time(raop_rtp_mirror->ntp);
-                    int64_t latency = ((int64_t) ntp_now) - ((int64_t) ntp_timestamp_local);
+                    uint64_t ntp_now = raop_ntp_get_local_time();
+                    int64_t latency = (ntp_timestamp_local ? ((int64_t) ntp_now) - ((int64_t) ntp_timestamp_local) : 0);
                     logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG,
-                               "raop_rtp video: now = %8.6f, ntp = %8.6f, latency = %8.6f, ts = %8.6f, %s %s",
+                               "raop_rtp video: now = %8.6f, ntp = %8.6f, latency = %9.6f, ts = %8.6f, %s %s",
                                (double) ntp_now / SEC, (double) ntp_timestamp_local / SEC, (double) latency / SEC,
                                (double) ntp_timestamp_remote / SEC, packet_description, h265_video ? h265 : h264);
                 }

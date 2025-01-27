@@ -94,8 +94,17 @@ struct raop_ntp_s {
     timing_protocol_t time_protocol;
     bool client_time_received;
 
+    uint64_t video_arrival_offset;
 };
 
+/* for use in syncing audio before a first rtp_sync */
+void raop_ntp_set_video_arrival_offset(raop_ntp_t* raop_ntp, const uint64_t *offset) {
+    raop_ntp->video_arrival_offset = *offset;
+}
+
+uint64_t raop_ntp_get_video_arrival_offset(raop_ntp_t* raop_ntp) {
+    return raop_ntp->video_arrival_offset;
+}
 
 /*
  * Used for sorting the data array by delay
@@ -155,6 +164,8 @@ raop_ntp_t *raop_ntp_init(logger_t *logger, raop_callbacks_t *callbacks, const c
     raop_ntp->timing_rport = timing_rport;
     raop_ntp->client_time_received = false;
 
+    raop_ntp->video_arrival_offset = 0;
+
     if (raop_ntp_parse_remote(raop_ntp, remote, remote_addr_len) < 0) {
         free(raop_ntp);
         return NULL;
@@ -166,7 +177,7 @@ raop_ntp_t *raop_ntp_init(logger_t *logger, raop_callbacks_t *callbacks, const c
     raop_ntp->running = 0;
     raop_ntp->joined = 1;
 
-    uint64_t time = raop_ntp_get_local_time(raop_ntp);
+    uint64_t time = raop_ntp_get_local_time();
 
     for (int i = 0; i < RAOP_NTP_DATA_COUNT; ++i) {
         raop_ntp->data[i].offset     = 0ll;
@@ -289,7 +300,7 @@ raop_ntp_thread(void *arg)
         raop_ntp_flush_socket(raop_ntp->tsock);
 
         // Send request
-        uint64_t send_time = raop_ntp_get_local_time(raop_ntp);
+        uint64_t send_time = raop_ntp_get_local_time();
         byteutils_put_ntp_timestamp(request, 24, send_time);
         int send_len = sendto(raop_ntp->tsock, (char *)request, sizeof(request), 0,
                               (struct sockaddr *) &raop_ntp->remote_saddr, raop_ntp->remote_saddr_len);
@@ -315,7 +326,7 @@ raop_ntp_thread(void *arg)
                     raop_ntp->client_time_received = true;
                 }
                 //local time of the server when the NTP response packet returns
-                int64_t t3 = (int64_t) raop_ntp_get_local_time(raop_ntp);
+                int64_t t3 = (int64_t) raop_ntp_get_local_time();
 
                 // Local time of the server when the NTP request packet leaves the server
                 int64_t t0 = (int64_t) byteutils_get_ntp_timestamp(response, 8);
@@ -484,7 +495,7 @@ uint64_t raop_remote_timestamp_to_nano_seconds(raop_ntp_t *raop_ntp, uint64_t ti
  * Returns the current time in nano seconds according to the local wall clock.
  * The system Unix time is used as the local wall clock.
  */
-uint64_t raop_ntp_get_local_time(raop_ntp_t *raop_ntp) {
+uint64_t raop_ntp_get_local_time() {
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
     return ((uint64_t) time.tv_nsec) + (uint64_t) time.tv_sec * SECOND_IN_NSECS;
@@ -494,16 +505,22 @@ uint64_t raop_ntp_get_local_time(raop_ntp_t *raop_ntp) {
  * Returns the current time in nano seconds according to the remote wall clock.
  */
 uint64_t raop_ntp_get_remote_time(raop_ntp_t *raop_ntp) {
+    if  (!raop_ntp->client_time_received) {
+        return 0;
+    }
     MUTEX_LOCK(raop_ntp->sync_params_mutex);
     int64_t offset = raop_ntp->sync_offset;
     MUTEX_UNLOCK(raop_ntp->sync_params_mutex);
-    return (uint64_t) ((int64_t) raop_ntp_get_local_time(raop_ntp) + offset);
+    return (uint64_t) ((int64_t) raop_ntp_get_local_time() + offset);
 }
 
 /**
  * Returns the local wall clock time in nano seconds for the given point in remote clock time
  */
 uint64_t raop_ntp_convert_remote_time(raop_ntp_t *raop_ntp, uint64_t remote_time) {
+    if  (!raop_ntp->client_time_received) {
+        return 0;
+    }
     MUTEX_LOCK(raop_ntp->sync_params_mutex);
     int64_t offset = raop_ntp->sync_offset;
     MUTEX_UNLOCK(raop_ntp->sync_params_mutex);
@@ -514,6 +531,9 @@ uint64_t raop_ntp_convert_remote_time(raop_ntp_t *raop_ntp, uint64_t remote_time
  * Returns the remote wall clock time in nano seconds for the given point in local clock time
  */
 uint64_t raop_ntp_convert_local_time(raop_ntp_t *raop_ntp, uint64_t local_time) {
+    if  (!raop_ntp->client_time_received) {
+        return 0;
+    }
     MUTEX_LOCK(raop_ntp->sync_params_mutex);
     int64_t offset = raop_ntp->sync_offset;
     MUTEX_UNLOCK(raop_ntp->sync_params_mutex);

@@ -765,3 +765,7 @@ void raop_destroy_airplay_video(raop_t *raop) {
         raop->airplay_video = NULL;
     }
 }
+
+uint64_t get_local_time() {
+    return raop_ntp_get_local_time();
+}

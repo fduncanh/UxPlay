@@ -108,7 +108,8 @@ int airplay_video_service_init(raop_t *raop, unsigned short port, const char *se
 bool register_airplay_video(raop_t *raop, airplay_video_t *airplay_video);
 airplay_video_t *get_airplay_video(raop_t *raop);
 airplay_video_t *deregister_airplay_video(raop_t *raop);
-  
+uint64_t get_local_time();
+
 RAOP_API raop_t *raop_init(raop_callbacks_t *callbacks);
 RAOP_API int raop_init2(raop_t *raop, int nohold, const char *device_id, const char *keyfile);
 RAOP_API void raop_set_log_level(raop_t *raop, int level);

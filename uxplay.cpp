@@ -1658,7 +1658,8 @@ extern "C" void audio_process (void *cls, raop_ntp_t *ntp, audio_decode_struct *
     }
     if (use_audio) {
         if (!remote_clock_offset) {
-            remote_clock_offset = data->ntp_time_local - data->ntp_time_remote;
+            uint64_t local_time = (data->ntp_time_local ? data->ntp_time_local : get_local_time());
+            remote_clock_offset = local_time - data->ntp_time_remote;
         }
         data->ntp_time_remote = data->ntp_time_remote + remote_clock_offset;
         switch (data->ct) {
@@ -1686,7 +1687,8 @@ extern "C" void video_process (void *cls, raop_ntp_t *ntp, video_decode_struct *
     }
     if (use_video) {
         if (!remote_clock_offset) {
-            remote_clock_offset = data->ntp_time_local - data->ntp_time_remote;
+            uint64_t local_time = (data->ntp_time_local ? data->ntp_time_local : get_local_time());
+            remote_clock_offset = local_time - data->ntp_time_remote;
         }
         data->ntp_time_remote = data->ntp_time_remote + remote_clock_offset;
         video_renderer_render_buffer(data->data, &(data->data_len), &(data->nal_count), &(data->ntp_time_remote));
