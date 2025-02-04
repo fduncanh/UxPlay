@@ -3,7 +3,7 @@
 ### **Now developed at the GitHub site <https://github.com/FDH2/UxPlay> (where ALL user issues should be posted, and latest versions can be found).**
 
 -   ***NEW in v1.71**: Support for (YouTube) HLS (HTTP Live Streaming)
-    video with the new "-hls" option.* **Only streaming from the YouTube iOS app
+    video with the new "-hls" option.* **Only m3u8 protocol streaming from the YouTube iOS app
     is currently supported**: (streaming using the AirPlay icon in a browser window
     is **not** yet supported).Click on the airplay icon in the
     YouTube app to stream video. (You may need to wait until

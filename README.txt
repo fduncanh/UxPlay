@@ -3,15 +3,15 @@
 ### **Now developed at the GitHub site <https://github.com/FDH2/UxPlay> (where ALL user issues should be posted, and latest versions can be found).**
 
 -   ***NEW in v1.71**: Support for (YouTube) HLS (HTTP Live Streaming)
-    video with the new "-hls" option.* **Only streaming from the YouTube
-    iOS app is currently supported**: (streaming using the AirPlay icon
-    in a browser window is **not** yet supported).Click on the airplay
-    icon in the YouTube app to stream video. (You may need to wait until
-    advertisements have finished or been skipped before clicking the
-    YouTube airplay icon.) **Please report any issues with this new
-    feature of UxPlay**. *The default video player for HLS is GStreamer
-    playbin v3: use "-hls 2" to revert to playbin v2 if some videos fail
-    to play*.
+    video with the new "-hls" option.* **Only m3u8 protocol streaming
+    from the YouTube iOS app is currently supported**: (streaming using
+    the AirPlay icon in a browser window is **not** yet supported).Click
+    on the airplay icon in the YouTube app to stream video. (You may
+    need to wait until advertisements have finished or been skipped
+    before clicking the YouTube airplay icon.) **Please report any
+    issues with this new feature of UxPlay**. *The default video player
+    for HLS is GStreamer playbin v3: use "-hls 2" to revert to playbin
+    v2 if some videos fail to play*.
 
 ## Highlights:
 
