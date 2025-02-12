@@ -906,13 +906,13 @@ void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
     raop_rtp_mirror->running = 0;
     MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
 
+    /* Join the thread */
+    THREAD_JOIN(raop_rtp_mirror->thread_mirror);
+
     if (raop_rtp_mirror->mirror_data_sock != -1) {
         closesocket(raop_rtp_mirror->mirror_data_sock);
         raop_rtp_mirror->mirror_data_sock = -1;
     }
-
-    /* Join the thread */
-    THREAD_JOIN(raop_rtp_mirror->thread_mirror);
 
     /* Mark thread as joined */
     MUTEX_LOCK(raop_rtp_mirror->run_mutex);
