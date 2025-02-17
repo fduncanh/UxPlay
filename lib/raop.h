@@ -90,7 +90,7 @@ struct raop_callbacks_s {
     void  (*register_client) (void *cls, const char *device_id, const char *pk_str, const char *name);
     bool  (*check_register) (void *cls, const char *pk_str);
     void  (*export_dacp) (void *cls, const char *active_remote, const char *dacp_id);
-    void  (*video_set_codec)(void *cls, video_codec_t codec);
+    int   (*video_set_codec)(void *cls, video_codec_t codec);
     /* for HLS video player controls */
     void  (*on_video_play) (void *cls, const char *location, const float start_position);
     void  (*on_video_scrub) (void *cls, const float position);

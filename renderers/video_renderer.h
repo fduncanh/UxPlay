@@ -64,7 +64,7 @@ void video_renderer_destroy ();
 void video_renderer_size(float *width_source, float *height_source, float *width, float *height);
 bool waiting_for_x11_window();
 bool video_get_playback_info(double *duration, double *position, float *rate);
-void video_renderer_choose_codec(bool is_h265);
+int video_renderer_choose_codec(bool is_h265);
 unsigned int video_renderer_listen(void *loop, int id);
 unsigned int video_reset_callback(void *loop);
 #ifdef __cplusplus

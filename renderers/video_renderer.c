@@ -54,7 +54,7 @@ struct video_renderer_s {
     GstElement *appsrc, *pipeline;
     GstBus *bus;
     const char *codec;
-    bool autovideo, state_pending;
+    bool autovideo;
     int id;
     gboolean terminate;
     gint64 duration;
@@ -158,7 +158,7 @@ GstElement *make_video_sink(const char *videosink, const char *videosink_options
         return NULL;
     }
 
-    /* process the video_sink_optons */
+    /* process the video_sink_options */
     size_t len = strlen(videosink_options);
     if (!len) {
         return video_sink;
@@ -398,23 +398,23 @@ void video_renderer_resume() {
 }
 
 void video_renderer_start() {
+    GstState state;
+    const gchar *state_name;
     if (hls_video) {
-        GstState state;
         renderer->bus = gst_element_get_bus(renderer->pipeline);
         gst_element_set_state (renderer->pipeline, GST_STATE_PAUSED);
 	gst_element_get_state(renderer->pipeline, &state, NULL, 1000 * GST_MSECOND);
-	const gchar *state_name;
 	state_name= gst_element_state_get_name(state);
 	logger_log(logger, LOGGER_DEBUG, "video renderer_start: state %s", state_name);
         return;
     } 
   /* when not hls, start both h264 and h265 pipelines; will shut down the "wrong" one when we know the codec */
     for (int i = 0; i < n_renderers; i++) {
-        gst_element_set_state (renderer_type[i]->pipeline, GST_STATE_PLAYING);
-	if (renderer_type[i]->appsrc) {
-            gst_video_pipeline_base_time = gst_element_get_base_time(renderer_type[i]->appsrc);
-        }
         renderer_type[i]->bus = gst_element_get_bus(renderer_type[i]->pipeline);
+        gst_element_set_state (renderer_type[i]->pipeline, GST_STATE_PAUSED);
+	gst_element_get_state(renderer_type[i]->pipeline, &state, NULL, 1000 * GST_MSECOND);
+	state_name= gst_element_state_get_name(state);
+	logger_log(logger, LOGGER_DEBUG, "video renderer_start: renderer %d state %s", i, state_name);
     }
     renderer = NULL;
     first_packet = true;
@@ -505,7 +505,7 @@ void video_renderer_stop() {
      }
 }
 
-static void video_renderer_destroy_h26x(video_renderer_t *renderer) {
+static void video_renderer_destroy_instance(video_renderer_t *renderer) {
     if (renderer) {
         GstState state;
         gst_element_get_state(renderer->pipeline, &state, NULL, 100 * GST_MSECOND);
@@ -514,6 +514,7 @@ static void video_renderer_destroy_h26x(video_renderer_t *renderer) {
                 gst_app_src_end_of_stream (GST_APP_SRC(renderer->appsrc));
             }
             gst_element_set_state (renderer->pipeline, GST_STATE_NULL);
+	    gst_element_get_state(renderer->pipeline, NULL, NULL, -1);
         }
         gst_object_unref(renderer->bus);
 	if (renderer->appsrc) {
@@ -532,11 +533,7 @@ static void video_renderer_destroy_h26x(video_renderer_t *renderer) {
 }
 
 void video_renderer_destroy() {
-    for (int i = 0; i < n_renderers; i++) {
-        if (renderer_type[i]) {
-            video_renderer_destroy_h26x(renderer_type[i]);
-        }
-    }  
+    video_renderer_destroy_instance(renderer);
 }
 
 gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void *loop) {
@@ -642,15 +639,6 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
                      gst_element_state_get_name (old_state),
                      gst_element_state_get_name (new_state));
         }
-        if (renderer_type[type]->state_pending && strstr(GST_MESSAGE_SRC_NAME(message), "pipeline")) {
-            GstState state;
-            gst_element_get_state(renderer_type[type]->pipeline, &state, NULL, 100 * GST_MSECOND);
-	    if (state == GST_STATE_NULL) {
-                gst_element_set_state(renderer_type[type]->pipeline, GST_STATE_PLAYING);
-	    } else if (state == GST_STATE_PLAYING) {
-                renderer_type[type]->state_pending = false;
-            }
-        }
         if (renderer_type[type]->autovideo) {
             char *sink = strstr(GST_MESSAGE_SRC_NAME(message), "-actual-sink-");
             if (sink) {
@@ -711,27 +699,38 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
     return TRUE;
 }
 
-void video_renderer_choose_codec (bool video_is_h265) {
+int video_renderer_choose_codec (bool video_is_h265) {
+    video_renderer_t *renderer_used = NULL;
+    video_renderer_t *renderer_unused = NULL;
     g_assert(!hls_video);
-    /* set renderer to h264 or h265, depending on pps/sps received by raop_rtp_mirror */
-    video_renderer_t *renderer_new = video_is_h265 ? renderer_type[1] : renderer_type[0];
-    if (renderer == renderer_new) {
-        return;
+    if (n_renderers == 1) {
+        if (video_is_h265) {
+            logger_log(logger, LOGGER_ERR, "video is h265 but the -h265 option was not used");
+            return -1;
+	}
+        renderer_used = renderer_type[0];
+    } else {
+        renderer_used = video_is_h265 ? renderer_type[1] : renderer_type[0];
+        renderer_unused = video_is_h265 ? renderer_type[0] : renderer_type[1];
     }
-    video_renderer_t *renderer_prev = renderer;
-    renderer = renderer_new;
+    if (renderer_used == renderer) {
+        return 0;
+    }
+    g_assert(renderer == NULL);
+    renderer = renderer_used;
+    gst_element_set_state (renderer->pipeline, GST_STATE_PLAYING);
+    GstState old_state, new_state;
+    if (gst_element_get_state(renderer->pipeline, &old_state, &new_state, 100 * GST_MSECOND) == GST_STATE_CHANGE_FAILURE) {
+        g_error("video pipeline failed to go into playing state");
+	return -1;
+    }
+    logger_log(logger, LOGGER_DEBUG, "video_pipeline state change from %s to %s\n",
+               gst_element_state_get_name (old_state),gst_element_state_get_name (new_state));
     gst_video_pipeline_base_time = gst_element_get_base_time(renderer->appsrc);
-    /* it seems unlikely that the codec will change between h264 and h265 during a connection,
-     * but in case it does, we set the previous renderer to GST_STATE_NULL, detect
-     * when this is finished by listening for the bus message, and then reset it to
-     * GST_STATE_READY, so it can be reused if the codec changes again. */
-    if (renderer_prev) {
-        gst_app_src_end_of_stream (GST_APP_SRC(renderer_prev->appsrc));
-        gst_bus_set_flushing(renderer_prev->bus, TRUE);
-        /* set state of previous renderer to GST_STATE_NULL to (hopefully?) close its video window */
-        gst_element_set_state (renderer_prev->pipeline, GST_STATE_NULL);
-	renderer_prev->state_pending = true;     // will set state to PLAYING once state is NULL
+    if (renderer_unused) {
+        video_renderer_destroy_instance(renderer_unused);
     }
+    return 0;
 }
 
 unsigned int video_reset_callback(void * loop) {

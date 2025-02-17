@@ -618,12 +618,17 @@ raop_rtp_mirror_thread(void *arg)
 
                 if (!memcmp(payload + 4, hvc1, 4)) {
                     /* hvc1 HECV detected */
-                    if (codec == VIDEO_CODEC_UNKNOWN){ 
+                    if (codec == VIDEO_CODEC_UNKNOWN) {
                         codec = VIDEO_CODEC_H265;
                         h265_video = true;
-                        raop_rtp_mirror->callbacks.video_set_codec(raop_rtp_mirror->callbacks.cls, codec);
-		    } else if (codec != VIDEO_CODEC_H265){
-		        logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "invalid codec change to H265: codec was set previously");
+                        if (raop_rtp_mirror->callbacks.video_set_codec(raop_rtp_mirror->callbacks.cls, codec) < 0) {
+                            logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "failed to set video codec as H265 ");
+                            /* drop connection */
+                            conn_reset = true;
+                            break;
+                        }
+                    } else if (codec != VIDEO_CODEC_H265) {
+                        logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "invalid video codec change to H265: codec was set previously");
                         /* drop connection */
                         conn_reset = true;
                         break;
@@ -698,12 +703,17 @@ raop_rtp_mirror_thread(void *arg)
                     ptr += 4;
                     memcpy(ptr, pps, pps_size);
                 } else {
-                    if (codec == VIDEO_CODEC_UNKNOWN){ 
+                    if (codec == VIDEO_CODEC_UNKNOWN) {
                         codec = VIDEO_CODEC_H264;
                         h265_video = false;
-                        raop_rtp_mirror->callbacks.video_set_codec(raop_rtp_mirror->callbacks.cls, codec);
-		    } else if (codec != VIDEO_CODEC_H264){
-		        logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "invalid codec change to H264: codec was set previously");
+                        if (raop_rtp_mirror->callbacks.video_set_codec(raop_rtp_mirror->callbacks.cls, codec) < 0) {
+                            logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "failed to set video codec as H264 ");
+                            /* drop connection */
+                            conn_reset = true;
+                            break;
+                        }
+                    } else if (codec != VIDEO_CODEC_H264) {
+                        logger_log(raop_rtp_mirror->logger, LOGGER_ERR, "invalid codec change to H264: codec was set previously");
                         /* drop connection */
                         conn_reset = true;
                         break;

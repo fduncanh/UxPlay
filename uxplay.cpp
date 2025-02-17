@@ -1579,11 +1579,9 @@ extern "C" void video_reset(void *cls) {
     reset_loop = true;
 }
 
-extern "C" void video_set_codec(void *cls, video_codec_t codec) {
-    if (use_video) {
-        bool video_is_h265 = (codec == VIDEO_CODEC_H265); 
-        video_renderer_choose_codec(video_is_h265);
-    }
+extern "C" int video_set_codec(void *cls, video_codec_t codec) {
+    bool video_is_h265 = (codec == VIDEO_CODEC_H265);
+    return video_renderer_choose_codec(video_is_h265);
 }
 
 extern "C" void display_pin(void *cls, char *pin) {
