@@ -415,31 +415,78 @@ http_handler_action(raop_conn_t *conn, http_request_t *request, http_response_t 
     logger_log(conn->raop->logger, LOGGER_DEBUG, "action type is %s", type);
     if (strstr(type, "unhandledURLResponse")) {
       action_type =  1;
-    } else if (strstr(type, "playlistInsert")) {
-      action_type = 2;
     } else if (strstr(type, "playlistRemove")) {
+      action_type = 2;
+    } else if (strstr(type, "playlistInsert")) {
       action_type = 3;
     } 
     free (type);
 
-    plist_t req_params_node = NULL;
+    plist_t req_params_node = plist_dict_get_item(req_root_node, "params");
     switch (action_type) {
     case 1:
         goto unhandledURLResponse;
     case 2:
-        logger_log(conn->raop->logger, LOGGER_INFO, "unhandled action type playlistInsert (add new playback)");
-        goto finish;
+        logger_log(conn->raop->logger, LOGGER_INFO, "unhandled action type playlistRemove (add new playback)");
+        goto playlistRemove;
     case 3:
-        logger_log(conn->raop->logger, LOGGER_INFO, "unhandled action type playlistRemove (stop playback)");
-        goto finish;
+        logger_log(conn->raop->logger, LOGGER_INFO, "unhandled action type playlistInsert (stop playback)");
+        goto playlistInsert;
     default:
         logger_log(conn->raop->logger, LOGGER_INFO, "unknown action type (unhandled)"); 
         goto finish;
     }
 
+ playlistRemove:
+
+    if (!PLIST_IS_DICT (req_params_node)) {
+        goto post_action_error;
+    }
+
+    plist_t plist_uuid_node = plist_dict_get_item(req_params_node, "uuid");
+    if (!plist_uuid_node) {
+        goto post_action_error;
+    } else {
+        char* remove_uuid = NULL;
+        const char *playback_uuid = get_playback_uuid(conn->raop->airplay_video);
+        plist_get_string_val(plist_uuid_node, &remove_uuid);
+        if (strcmp(remove_uuid, playback_uuid)) {
+            logger_log(conn->raop->logger, LOGGER_ERR, "uuid of playlist removal action request did not match current playlist:\n"
+                       "   current: %s\n   remove: %s", playback_uuid, remove_uuid);
+        } else {
+	  logger_log(conn->raop->logger, LOGGER_ERR, "FIXME: playlist removal not yet implemented");
+	}	  
+	free (remove_uuid);
+    }
+    goto finish;
+	
+ playlistInsert:
+    {
+    printf("\n***************FIXME************************\nPlaylist insertion needs more information for it to be implemented:\n"
+	   "please report following output as an \"Issue\" at http://github.com/FDH2/UxPlay:\n");
+    char *header_str = NULL;
+    http_request_get_header_string(request, &header_str);
+    printf("\n\n%s\n", header_str);
+    bool is_plist = (bool) strstr(header_str,"apple-binary-plist");
+    free(header_str);
+    if (is_plist) {
+        int request_datalen;
+        const char *request_data = http_request_get_data(request, &request_datalen);
+        plist_t req_root_node = NULL;
+        plist_from_bin(request_data, request_datalen, &req_root_node);
+        char * plist_xml;
+        uint32_t plist_len;
+        plist_to_xml(req_root_node, &plist_xml, &plist_len);
+        plist_xml = utils_strip_data_from_plist_xml(plist_xml);
+        printf("%s", plist_xml);	
+        free(plist_xml);
+        plist_free(req_root_node);
+    }
+    }
+    assert(0);
+	
  unhandledURLResponse:;
 
-    req_params_node = plist_dict_get_item(req_root_node, "params");
     if (!PLIST_IS_DICT (req_params_node)) {
         goto post_action_error;
     }
