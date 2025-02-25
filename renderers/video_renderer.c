@@ -690,9 +690,8 @@ gboolean gstreamer_pipeline_bus_callback(GstBus *bus, GstMessage *message, void 
                 if (gst_element_query(renderer->pipeline, query)) {
 	        gst_query_parse_seeking (query, NULL, &hls_seek_enabled, &hls_seek_start, &hls_seek_end);
                 if (hls_seek_enabled) {
-                    g_print ("Seeking is ENABLED from %" GST_TIME_FORMAT " to %" GST_TIME_FORMAT ": requested start_position %" GST_TIME_FORMAT "\n",
-                              GST_TIME_ARGS (hls_seek_start), GST_TIME_ARGS (hls_seek_end),
-                              GST_TIME_ARGS (hls_requested_start_position));
+                    g_print ("Seeking is ENABLED from %" GST_TIME_FORMAT " to %" GST_TIME_FORMAT "\n",
+			     GST_TIME_ARGS (hls_seek_start), GST_TIME_ARGS (hls_seek_end));
                 } else {
                     g_print ("Seeking is DISABLED for this stream.\n");
                 }

@@ -443,21 +443,26 @@ http_handler_action(raop_conn_t *conn, http_request_t *request, http_response_t 
         goto post_action_error;
     }
 
-    plist_t plist_uuid_node = plist_dict_get_item(req_params_node, "uuid");
-    if (!plist_uuid_node) {
+    plist_t req_params_item_node = plist_dict_get_item(req_params_node, "item");
+    if (!req_params_item_node) {
         goto post_action_error;
     } else {
+        if (!PLIST_IS_DICT (req_params_item_node)) {
+            goto post_action_error;
+        }
+        plist_t req_params_item_uuid_node = plist_dict_get_item(req_params_item_node, "uuid");
         char* remove_uuid = NULL;
+	plist_get_string_val(req_params_item_uuid_node, &remove_uuid);
         const char *playback_uuid = get_playback_uuid(conn->raop->airplay_video);
-        plist_get_string_val(plist_uuid_node, &remove_uuid);
-        if (strcmp(remove_uuid, playback_uuid)) {
+	if (strcmp(remove_uuid, playback_uuid)) {
             logger_log(conn->raop->logger, LOGGER_ERR, "uuid of playlist removal action request did not match current playlist:\n"
                        "   current: %s\n   remove: %s", playback_uuid, remove_uuid);
         } else {
-	  logger_log(conn->raop->logger, LOGGER_ERR, "FIXME: playlist removal not yet implemented");
+            logger_log(conn->raop->logger, LOGGER_DEBUG, "removal_uuid matches playback_uuid\n");
 	}	  
 	free (remove_uuid);
     }
+    logger_log(conn->raop->logger, LOGGER_ERR, "FIXME: playlist removal not yet implemented");
     goto finish;
 	
  playlistInsert:
@@ -496,45 +501,45 @@ http_handler_action(raop_conn_t *conn, http_request_t *request, http_response_t 
     int fcup_response_datalen = 0;
 
     if  (logger_debug) {
-        plist_t plist_fcup_response_statuscode_node = plist_dict_get_item(req_params_node,
+        plist_t req_params_fcup_response_statuscode_node = plist_dict_get_item(req_params_node,
                                                                       "FCUP_Response_StatusCode");
-        if (plist_fcup_response_statuscode_node) {
-            plist_get_uint_val(plist_fcup_response_statuscode_node, &uint_val);
+        if (req_params_fcup_response_statuscode_node) {
+            plist_get_uint_val(req_params_fcup_response_statuscode_node, &uint_val);
             fcup_response_statuscode = (int) uint_val;
             uint_val = 0;
             logger_log(conn->raop->logger, LOGGER_DEBUG, "FCUP_Response_StatusCode = %d",
                        fcup_response_statuscode);
         }
 
-        plist_t plist_fcup_response_requestid_node = plist_dict_get_item(req_params_node,
+        plist_t req_params_fcup_response_requestid_node = plist_dict_get_item(req_params_node,
                                                                      "FCUP_Response_RequestID");
-        if (plist_fcup_response_requestid_node) {
-            plist_get_uint_val(plist_fcup_response_requestid_node, &uint_val);
+        if (req_params_fcup_response_requestid_node) {
+            plist_get_uint_val(req_params_fcup_response_requestid_node, &uint_val);
             request_id = (int) uint_val;
             uint_val = 0;
             logger_log(conn->raop->logger, LOGGER_DEBUG, "FCUP_Response_RequestID =  %d", request_id);
         }
     }
 
-    plist_t plist_fcup_response_url_node = plist_dict_get_item(req_params_node, "FCUP_Response_URL");
-    if (!PLIST_IS_STRING(plist_fcup_response_url_node)) {
+    plist_t req_params_fcup_response_url_node = plist_dict_get_item(req_params_node, "FCUP_Response_URL");
+    if (!PLIST_IS_STRING(req_params_fcup_response_url_node)) {
         goto post_action_error;
     }
     char *fcup_response_url = NULL;
-    plist_get_string_val(plist_fcup_response_url_node, &fcup_response_url);
+    plist_get_string_val(req_params_fcup_response_url_node, &fcup_response_url);
     if (!fcup_response_url) {
         goto post_action_error;
     }
     logger_log(conn->raop->logger, LOGGER_DEBUG, "FCUP_Response_URL =  %s", fcup_response_url);
 	
-    plist_t plist_fcup_response_data_node = plist_dict_get_item(req_params_node, "FCUP_Response_Data");
-    if (!PLIST_IS_DATA(plist_fcup_response_data_node)){
+    plist_t req_params_fcup_response_data_node = plist_dict_get_item(req_params_node, "FCUP_Response_Data");
+    if (!PLIST_IS_DATA(req_params_fcup_response_data_node)){
         goto post_action_error;
     }
 
     uint_val = 0;
     char *fcup_response_data = NULL;    
-    plist_get_data_val(plist_fcup_response_data_node, &fcup_response_data, &uint_val);
+    plist_get_data_val(req_params_fcup_response_data_node, &fcup_response_data, &uint_val);
     fcup_response_datalen = (int) uint_val;
 
     if (!fcup_response_data) {
